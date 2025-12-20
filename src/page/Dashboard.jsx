@@ -1,231 +1,176 @@
 import React, { useEffect, useState } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  LineChart, Line, ResponsiveContainer
-} from "recharts";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 
 export default function Dashboard() {
-
   const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [fees, setFees] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("All");
 
-  const [attendanceData, setAttendanceData] = useState([]);
-  const [feeData, setFeeData] = useState([]);
+  /* ================= DATE ================= */
+  const today = new Date();
+  const todayDay = today.getDate();
+  const currentMonth = today.toLocaleString("en-IN", { month: "long" });
 
-  /* --------------------------------------------------
-      🔥 REALTIME STUDENTS
-  -------------------------------------------------- */
+  const months = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  /* ================= STUDENTS ================= */
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "students"), (snap) => {
-      setStudents(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    return onSnapshot(collection(db, "students"), (snap) => {
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(s => !s.deletedAt);
+
+      setStudents(list);
     });
-    return unsub;
   }, []);
 
-  /* --------------------------------------------------
-      🔥 REALTIME TEACHERS
-  -------------------------------------------------- */
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "teachers"), (snap) => {
-      setTeachers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  /* ================= CLASS FILTER ================= */
+  const classes = ["All", ...new Set(students.map(s => s.className))];
+
+  const filteredStudents =
+    selectedClass === "All"
+      ? students
+      : students.filter(s => s.className === selectedClass);
+
+  /* ================= COUNTS ================= */
+  const totalStudents = filteredStudents.length;
+
+  const presentStudentsToday = filteredStudents.filter((s) => {
+    const key = `${currentMonth}_day_${todayDay}`;
+    return s.attendance?.[key] === "P";
+  }).length;
+
+  /* ================= FEES ================= */
+  const totalFeesAll = filteredStudents.reduce((sum, s) => {
+    months.forEach(m => {
+      sum += s.fees?.[m]?.total || 0;
     });
-    return unsub;
-  }, []);
-
-  /* --------------------------------------------------
-      🔥 REALTIME FEES
-  -------------------------------------------------- */
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "fees"), (snap) => {
-      setFees(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-    return unsub;
-  }, []);
-
-  /* --------------------------------------------------
-      🔥 TODAY DATE
-  -------------------------------------------------- */
-  const today = new Date().toLocaleDateString("en-IN");
-
-  /* --------------------------------------------------
-      🔥 TOTAL + TODAY STUDENTS PRESENT
-  -------------------------------------------------- */
-  const totalStudents = students.length;
-
-  const presentStudents = students.reduce((count, s) => {
-    if (!s.attendance) return count;
-
-    const todayKey = Object.keys(s.attendance).find(
-      (k) => s.attendance[k].date === today
-    );
-
-    if (todayKey && s.attendance[todayKey].status === "P") {
-      return count + 1;
-    }
-    return count;
+    return sum;
   }, 0);
 
-  /* --------------------------------------------------
-      🔥 TOTAL + PRESENT TEACHERS COUNT
-  -------------------------------------------------- */
-  const totalTeachers = teachers.length;
-
-  const presentTeachers = teachers.reduce((count, t) => {
-    if (!t.attendance) return count;
-
-    const pCount = Object.values(t.attendance).filter((v) => v === "P").length;
-    return count + pCount;
+  const totalCollectionAll = filteredStudents.reduce((sum, s) => {
+    months.forEach(m => {
+      sum += s.fees?.[m]?.paid || 0;
+    });
+    return sum;
   }, 0);
 
-  /* --------------------------------------------------
-      🔥 TOTAL + TODAY FEES COLLECTION
-  -------------------------------------------------- */
-  const totalFees = fees.reduce((sum, f) => sum + Number(f.amount || 0), 0);
+  const totalPendingFees = totalFeesAll - totalCollectionAll;
 
-  const todayCollection = fees
-    .filter((f) => f.date === today)
-    .reduce((sum, f) => sum + Number(f.amount || 0), 0);
-
-  /* --------------------------------------------------
-      🔥 WEEKLY ATTENDANCE (BACKEND DATA)
-  -------------------------------------------------- */
-  useEffect(() => {
-    if (students.length === 0 || teachers.length === 0) return;
-
-    const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-    let weekly = days.map((d) => ({
-      day: d,
-      students: 0,
-      teachers: 0
+  /* ================= CLASS STATS ================= */
+  const classStats = classes
+    .filter(c => c !== "All")
+    .map(cls => ({
+      className: cls,
+      count: students.filter(s => s.className === cls).length,
     }));
 
-    // Students Attendance
-    students.forEach((stu) => {
-      if (!stu.attendance) return;
-      Object.values(stu.attendance).forEach((att) => {
-        const day = new Date(att.date).getDay();
-        if (att.status === "P") {
-          weekly[day].students += 1;
-        }
-      });
-    });
-
-    // Teachers Attendance
-    teachers.forEach((tch) => {
-      if (!tch.attendance) return;
-      Object.keys(tch.attendance).forEach((dateKey) => {
-        if (tch.attendance[dateKey] === "P") {
-          const day = new Date(dateKey).getDay();
-          weekly[day].teachers += 1;
-        }
-      });
-    });
-
-    setAttendanceData(weekly);
-  }, [students, teachers]);
-
-  /* --------------------------------------------------
-      🔥 MONTHLY FEES (BACKEND DATA)
-  -------------------------------------------------- */
-  useEffect(() => {
-    if (fees.length === 0) return;
-
-    let map = {};
-
-    fees.forEach((f) => {
-      const d = new Date(f.date.split("/").reverse().join("-"));
-      const month = d.toLocaleString("en-IN", { month: "short" });
-
-      if (!map[month]) map[month] = 0;
-      map[month] += Number(f.amount || 0);
-    });
-
-    const result = Object.keys(map).map((m) => ({
-      month: m,
-      fee: map[m],
-    }));
-
-    setFeeData(result);
-  }, [fees]);
-
-  /* --------------------------------------------------
-      🔥 UI STARTS
-  -------------------------------------------------- */
+  /* ================= UI ================= */
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-100 min-h-screen">
 
-      <h1 className="text-3xl font-bold mb-6">📊 Dashboard Overview</h1>
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">
+          📊 School Dashboard
+        </h1>
+
+        <select
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+          className="mt-4 md:mt-0 px-4 py-2 rounded-lg border bg-white shadow
+                     focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          {classes.map(cls => (
+            <option key={cls} value={cls}>{cls}</option>
+          ))}
+        </select>
+      </div>
 
       {/* TOP CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard title="Total Students" value={totalStudents} icon="🎓" gradient="from-blue-500 to-blue-600" />
+        <StatCard title="Present Today" value={presentStudentsToday} icon="✅" gradient="from-green-500 to-emerald-600" />
+        <StatCard title="Total Fees" value={`₹ ${totalFeesAll}`} icon="💰" gradient="from-purple-500 to-indigo-600" />
+        <StatCard title="Total Collection" value={`₹ ${totalCollectionAll}`} icon="🏦" gradient="from-orange-500 to-amber-500" />
+        <StatCard title="Pending Fees" value={`₹ ${totalPendingFees}`} icon="⚠️" gradient="from-red-500 to-rose-600" />
+      </div>
 
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <p className="text-gray-500 text-sm">Total Students</p>
-          <p className="text-4xl font-bold text-blue-600 mt-2">{totalStudents}</p>
+      {/* EXTRA SECTIONS */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* QUICK SUMMARY */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-lg font-semibold mb-4 text-gray-800">
+            📌 Quick Summary
+          </h2>
+
+          <div className="space-y-3 text-gray-700">
+            <Row label="Total Students" value={totalStudents} />
+            <Row label="Present Today" value={presentStudentsToday} valueClass="text-green-600" />
+            <Row label="Total Fees" value={`₹ ${totalFeesAll}`} />
+            <Row label="Total Collection" value={`₹ ${totalCollectionAll}`} />
+            <Row label="Pending Fees" value={`₹ ${totalPendingFees}`} valueClass="text-red-600" />
+          </div>
         </div>
 
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <p className="text-gray-500 text-sm">Present Students (Today)</p>
-          <p className="text-4xl font-bold text-green-600 mt-2">{presentStudents}</p>
-        </div>
+        {/* CLASS WISE */}
+        <div className="bg-white rounded-xl shadow p-6 lg:col-span-2">
+          <h2 className="text-lg font-semibold mb-4 text-gray-800">
+            🏫 Class-wise Students
+          </h2>
 
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <p className="text-gray-500 text-sm">Total Teachers</p>
-          <p className="text-4xl font-bold text-purple-600 mt-2">{totalTeachers}</p>
-        </div>
-
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <p className="text-gray-500 text-sm">Teachers Present</p>
-          <p className="text-4xl font-bold text-green-600 mt-2">{presentTeachers}</p>
-        </div>
-
-        <div className="bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-lg p-6 rounded-xl col-span-1 md:col-span-2">
-          <p className="text-sm">Total Fee Collection</p>
-          <p className="text-4xl font-bold mt-2">₹ {totalFees}</p>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-500 to-lime-400 text-white shadow-lg p-6 rounded-xl col-span-1 md:col-span-2">
-          <p className="text-sm">Today's Fee Collection</p>
-          <p className="text-4xl font-bold mt-2">₹ {todayCollection}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {classStats.map(cls => (
+              <div
+                key={cls.className}
+                className="border rounded-lg p-4 text-center bg-gray-50
+                           hover:shadow-md transition"
+              >
+                <p className="text-sm text-gray-500">{cls.className}</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">
+                  {cls.count}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
 
-      {/* CHARTS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
-        
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <h2 className="text-xl font-semibold mb-4">Weekly Attendance</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={attendanceData}>
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
-              <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
-              <Line type="monotone" dataKey="students" stroke="blue" strokeWidth={3} />
-              <Line type="monotone" dataKey="teachers" stroke="green" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white shadow-lg p-6 rounded-xl">
-          <h2 className="text-xl font-semibold mb-4">Monthly Fee Collection</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={feeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="fee" fill="#f97316" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
+      {/* FOOTER */}
+      <div className="mt-12 text-center text-sm text-gray-500">
+        <p>Session : 2025 – 26</p>
+        <p>Last Updated : {new Date().toLocaleString("en-IN")}</p>
       </div>
 
     </div>
   );
 }
+
+/* ================= COMPONENTS ================= */
+
+const StatCard = ({ title, value, icon, gradient }) => (
+  <div
+    className={`rounded-xl shadow-lg text-white bg-gradient-to-r ${gradient}
+      transform transition hover:scale-[1.03]`}
+  >
+    <div className="p-6 flex items-center justify-between">
+      <div>
+        <p className="text-sm opacity-90">{title}</p>
+        <p className="text-3xl font-bold mt-1">{value}</p>
+      </div>
+      <div className="text-4xl opacity-80">{icon}</div>
+    </div>
+  </div>
+);
+
+const Row = ({ label, value, valueClass = "" }) => (
+  <div className="flex justify-between">
+    <span>{label}</span>
+    <span className={`font-bold ${valueClass}`}>{value}</span>
+  </div>
+);

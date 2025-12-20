@@ -4,7 +4,20 @@ import { db, storage } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
 
+/* ================= MONTHS ================= */
+const monthsOrder = [
+  "April", "May", "June", "July", "August", "September",
+  "October", "November", "December", "January", "February", "March"
+];
+
+/* ================= CLASSES ================= */
+const classes = [
+  "Class 1","Class 2","Class 3","Class 4","Class 5","Class 6",
+  "Class 7","Class 8","Class 9","Class 10","Class 11","Class 12",
+];
+
 export function AddTeacherPopup({ close, editData }) {
+
   const [form, setForm] = useState({
     name: "",
     subject: "",
@@ -15,27 +28,35 @@ export function AddTeacherPopup({ close, editData }) {
     address: "",
     photo: null,
     photoURL: "",
-    attendance: {}, // for months
-    status: {},     // month wise status
+
+    // 🔥 CLASS TEACHER FIELDS
+    isClassTeacher: false,
+    classTeacherOf: "",
   });
 
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  /* ================= LOAD EDIT DATA ================= */
   useEffect(() => {
     if (editData) {
       setForm((s) => ({
         ...s,
         ...editData,
-        photo: null, // prevent File upload issue
+        salary: editData.salary || "",
+        isClassTeacher: editData.isClassTeacher || false,
+        classTeacherOf: editData.classTeacherOf || "",
+        photo: null,
       }));
     }
-
     setTimeout(() => setShow(true), 10);
   }, [editData]);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleCheckbox = (e) =>
+    setForm((prev) => ({ ...prev, isClassTeacher: e.target.checked }));
 
   const handlePhoto = (e) =>
     setForm((prev) => ({ ...prev, photo: e.target.files[0] }));
@@ -45,6 +66,20 @@ export function AddTeacherPopup({ close, editData }) {
     setTimeout(() => close(), 200);
   };
 
+  /* ================= AUTO SALARY STRUCTURE ================= */
+  const buildSalaryDetails = (monthlySalary) => {
+    let obj = {};
+    monthsOrder.forEach((m) => {
+      obj[m] = {
+        total: Number(monthlySalary),
+        paid: 0,
+        paidAt: null,
+      };
+    });
+    return obj;
+  };
+
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -52,25 +87,41 @@ export function AddTeacherPopup({ close, editData }) {
     try {
       let photoURL = form.photoURL;
 
-      // Upload new photo
+      // 📸 Upload photo
       if (form.photo) {
-        const imageRef = ref(storage, `teachers/${Date.now()}_${form.photo.name}`);
+        const imageRef = ref(
+          storage,
+          `teachers/${Date.now()}_${form.photo.name}`
+        );
         await uploadBytes(imageRef, form.photo);
         photoURL = await getDownloadURL(imageRef);
       }
 
-      // Firestore-safe object (remove File + attendance)
-      const { photo, attendance, ...safeForm } = form;
+      const teacherData = {
+        name: form.name,
+        subject: form.subject,
+        phone: form.phone,
+        salary: Number(form.salary),
+        userId: form.userId,
+        password: form.password,
+        address: form.address,
+        photoURL,
 
-      safeForm.salary = Number(form.salary);
-      safeForm.photoURL = photoURL;
+        // 🔥 CLASS TEACHER DATA
+        isClassTeacher: form.isClassTeacher,
+        classTeacherOf: form.isClassTeacher ? form.classTeacherOf : null,
+      };
 
       if (editData) {
-        await updateDoc(doc(db, "teachers", editData.id), safeForm);
+        // UPDATE
+        await updateDoc(doc(db, "teachers", editData.id), teacherData);
         toast.success("Teacher Updated Successfully!");
       } else {
+        // ADD NEW
         await addDoc(collection(db, "teachers"), {
-          ...safeForm,
+          ...teacherData,
+          salaryDetails: buildSalaryDetails(form.salary), // ✅ AUTO 12 MONTHS
+          attendance: {},
           createdAt: new Date(),
         });
         toast.success("Teacher Added Successfully!");
@@ -85,6 +136,7 @@ export function AddTeacherPopup({ close, editData }) {
     setLoading(false);
   };
 
+  /* ================= UI ================= */
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
       <div
@@ -105,73 +157,64 @@ export function AddTeacherPopup({ close, editData }) {
 
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
 
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Name"
-            required
-            className="border px-3 py-2 rounded"
-          />
+          <input name="name" value={form.name} onChange={handleChange}
+            placeholder="Name" required className="border px-3 py-2 rounded" />
 
-          <input
-            name="subject"
-            value={form.subject}
-            onChange={handleChange}
-            placeholder="Subject"
-            required
-            className="border px-3 py-2 rounded"
-          />
+          <input name="subject" value={form.subject} onChange={handleChange}
+            placeholder="Subject" required className="border px-3 py-2 rounded" />
 
-          <input
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="Phone"
-            required
-            className="border px-3 py-2 rounded"
-          />
+          <input name="phone" value={form.phone} onChange={handleChange}
+            placeholder="Phone" required className="border px-3 py-2 rounded" />
 
-          <input
-            name="salary"
-            type="number"
-            value={form.salary}
+          <input name="salary" type="number" value={form.salary}
             onChange={handleChange}
             placeholder="Monthly Salary (₹)"
-            required
-            className="border px-3 py-2 rounded"
-          />
+            required className="border px-3 py-2 rounded" />
 
-          <input
-            name="userId"
-            value={form.userId}
+          <input name="userId" value={form.userId}
             onChange={handleChange}
             placeholder="User ID"
-            className="border px-3 py-2 rounded"
-          />
+            className="border px-3 py-2 rounded" />
 
-          <input
-            name="password"
-            value={form.password}
+          <input name="password" value={form.password}
             onChange={handleChange}
             placeholder="Password"
-            className="border px-3 py-2 rounded"
-          />
+            className="border px-3 py-2 rounded" />
 
-          <textarea
-            name="address"
-            value={form.address}
+          {/* 🔥 CLASS TEACHER CHECK */}
+          <div className="col-span-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.isClassTeacher}
+              onChange={handleCheckbox}
+            />
+            <label className="font-semibold">Class Teacher</label>
+          </div>
+
+          {/* 🔥 CLASS SELECT */}
+          {form.isClassTeacher && (
+            <select
+              name="classTeacherOf"
+              value={form.classTeacherOf}
+              onChange={handleChange}
+              required
+              className="col-span-2 border px-3 py-2 rounded"
+            >
+              <option value="">Select Class</option>
+              {classes.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          )}
+
+          <textarea name="address" value={form.address}
             onChange={handleChange}
             placeholder="Address"
-            className="col-span-2 border px-3 py-2 rounded"
-          />
+            className="col-span-2 border px-3 py-2 rounded" />
 
-          <input
-            type="file"
-            accept="image/*"
+          <input type="file" accept="image/*"
             onChange={handlePhoto}
-            className="col-span-2 border px-3 py-2 rounded"
-          />
+            className="col-span-2 border px-3 py-2 rounded" />
 
           {form.photoURL && !form.photo && (
             <img

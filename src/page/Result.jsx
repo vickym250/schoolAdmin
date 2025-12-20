@@ -275,7 +275,7 @@ const handleDelete = async (id) => {
         <th className="border p-2">Roll</th>
         <th className="border p-2">Name</th>
         <th className="border p-2">Total</th>
-        <th className="border p-2">Obtained</th>
+        <th className="border p-2">Obtained %</th>
         <th className="border p-2">%</th>
         <th className="border p-2">Grade</th>
         <th className="border p-2">Action</th>

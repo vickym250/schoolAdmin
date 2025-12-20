@@ -10,7 +10,6 @@ import {
   orderBy,
   doc,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -19,8 +18,8 @@ import toast from "react-hot-toast";
 export default function StudentList() {
 
   const months = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
   ];
 
   const [month, setMonth] = useState(months[new Date().getMonth()]);
@@ -34,20 +33,33 @@ export default function StudentList() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptStudent, setReceiptStudent] = useState(null);
 
+  // --- NAYA STATE SEARCH KE LIYE ---
+  const [searchTerm, setSearchTerm] = useState("");
+
   /* ---------------- FETCH STUDENTS ---------------- */
   useEffect(() => {
     const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const data = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(s => !s.deletedAt); // soft delete filter
+
+      setStudents(data);
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  /* ---------------- FILTER BY CLASS ---------------- */
-  const studentsByClass = students.filter(
-    s => s.className?.toLowerCase() === className.toLowerCase()
-  );
+  /* ---------------- FILTER BY CLASS & SEARCH ---------------- */
+  // Isme hum class aur search term dono ko ek saath filter kar rahe hain
+  const filteredStudents = students.filter((s) => {
+    const matchesClass = s.className?.toLowerCase() === className.toLowerCase();
+    const matchesSearch = 
+      s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      s.rollNumber?.toString().includes(searchTerm);
+
+    return matchesClass && matchesSearch;
+  });
 
   /* ---------------- PAY FEES ---------------- */
   const handlePayFees = async (student) => {
@@ -62,7 +74,9 @@ export default function StudentList() {
 
     toast((t) => (
       <div>
-        <p className="font-semibold">Pay full fees ₹{total}?</p>
+        <p className="font-semibold">
+          Pay full fees ₹{total} for {month}?
+        </p>
         <div className="flex gap-2 mt-2">
           <button
             className="bg-green-600 text-white px-3 py-1 rounded"
@@ -88,18 +102,22 @@ export default function StudentList() {
     ));
   };
 
-  /* ---------------- DELETE ---------------- */
+  /* ---------------- DELETE (SOFT DELETE) ---------------- */
   const handleDelete = (id) => {
     toast((t) => (
       <div>
-        <p className="font-semibold text-red-600">Delete this student?</p>
+        <p className="font-semibold text-red-600">
+          Delete this student? (Data will be kept safe)
+        </p>
         <div className="flex gap-2 mt-2">
           <button
             className="bg-red-600 text-white px-3 py-1 rounded"
             onClick={async () => {
-              await deleteDoc(doc(db, "students", id));
+              await updateDoc(doc(db, "students", id), {
+                deletedAt: serverTimestamp(),
+              });
               toast.dismiss(t.id);
-              toast.success("Student Deleted!");
+              toast.success("Student Archived Successfully!");
             }}
           >
             Yes
@@ -122,8 +140,8 @@ export default function StudentList() {
       <div className={`bg-white p-6 rounded-xl shadow ${open ? "blur-2xl" : ""}`}>
         <h2 className="text-2xl font-bold mb-4">Student List</h2>
 
-        {/* FILTERS */}
-        <div className="flex gap-4 mb-4 items-center">
+        {/* FILTERS & SEARCH */}
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
           <select
             value={month}
             onChange={(e) => setMonth(e.target.value)}
@@ -142,6 +160,15 @@ export default function StudentList() {
             ))}
           </select>
 
+          {/* --- NAYA SEARCH INPUT --- */}
+          <input
+            type="text"
+            placeholder="Search by name or roll..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border px-4 py-2 rounded-lg flex-1 min-w-[200px] outline-none focus:ring-2 focus:ring-blue-400"
+          />
+
           <button
             onClick={() => { setEditStudent(null); setOpen(true); }}
             className="bg-amber-300 px-4 py-2 rounded font-bold"
@@ -152,157 +179,172 @@ export default function StudentList() {
 
         {/* TABLE */}
         {!loading && (
-        <div className="overflow-x-auto rounded-xl border bg-white">
-  <table className="w-full text-base text-left">
-    <thead className="bg-gray-100 text-gray-700">
-      <tr>
-        <th className="p-4 font-semibold">Photo</th>
-        <th className="p-4 font-semibold">Roll</th>
-        <th className="p-4 font-semibold">Name</th>
-        <th className="p-4 font-semibold">Class</th>
-        <th className="p-4 text-center font-semibold">Attendance</th>
-        <th className="p-4 text-center font-semibold">Total</th>
-        <th className="p-4 text-center font-semibold">Paid</th>
-        <th className="p-4 text-center font-semibold">Status</th>
-        <th className="p-4 text-center font-semibold">Action</th>
-      </tr>
-    </thead>
+          <div className="overflow-x-auto rounded-2xl border bg-white shadow">
+            <table className="w-full text-base text-left">
+              <thead className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700">
+                <tr>
+                  <th className="p-4">Photo</th>
+                  <th className="p-4">Roll</th>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Class</th>
+                  <th className="p-4">Father</th>
+                  <th className="p-4 text-center">Attendance</th>
+                  <th className="p-4 text-center">Total</th>
+                  <th className="p-4 text-center">Paid</th>
+                  <th className="p-4 text-center">Status</th>
+                  <th className="p-4 text-center">Action</th>
+                </tr>
+              </thead>
 
-    <tbody>
-      {studentsByClass.map((s) => {
+              <tbody>
+                {filteredStudents.map((s) => {
 
-        /* -------- FEES -------- */
-        const fee = s.fees?.[month] || { total: 0, paid: 0 };
-        const totalFees = Number(fee.total);
-        const paidFees = Number(fee.paid);
+                  const fee = s.fees?.[month] || { total: 0, paid: 0 };
+                  const totalFees = Number(fee.total);
+                  const paidFees = Number(fee.paid);
 
-        /* -------- ATTENDANCE -------- */
-        const attendanceRoot = s.attendance || {};
+                  const attendanceRoot = s.attendance || {};
+                  const dayEntries = Object.entries(attendanceRoot).filter(
+                    ([key, value]) =>
+                      key.startsWith(`${month}_day_`) &&
+                      (value === "P" || value === "A")
+                  );
 
-        const dayEntries = Object.entries(attendanceRoot).filter(
-          ([key, value]) =>
-            key.startsWith(`${month}_day_`) &&
-            (value === "P" || value === "A")
-        );
+                  const presentCount = dayEntries.filter(([_, v]) => v === "P").length;
+                  const absentCount = dayEntries.filter(([_, v]) => v === "A").length;
 
-        const presentCount = dayEntries.filter(([_, v]) => v === "P").length;
-        const absentCount = dayEntries.filter(([_, v]) => v === "A").length;
+                  return (
+                    <tr
+                      key={s.id}
+                      className="border-b hover:bg-blue-50 transition"
+                    >
 
-        return (
-          <tr
-            key={s.id}
-            className="border-b hover:bg-gray-50 transition"
-          >
+                      {/* PHOTO */}
+                      <td className="p-4">
+                        {s.photoURL ? (
+                          <img
+                            src={s.photoURL}
+                            alt=""
+                            className="w-12 h-12 rounded-full object-cover border"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center font-bold">
+                            {s.name?.charAt(0)}
+                          </div>
+                        )}
+                      </td>
 
-            {/* PHOTO */}
-            <td className="p-4">
-              {s.photoURL ? (
-                <img
-                  src={s.photoURL}
-                  alt={s.name}
-                  className="w-12 h-12 rounded-full object-cover border"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center font-bold text-base">
-                  {s.name?.charAt(0)}
-                </div>
-              )}
-            </td>
+                      {/* ROLL */}
+                      <td className="p-4 font-semibold text-gray-700">
+                        {s.rollNumber}
+                      </td>
 
-            {/* ROLL */}
-            <td className="p-4 text-base font-medium">
-              {s.rollNumber}
-            </td>
+                      {/* NAME */}
+                      <td className="p-4 font-bold text-gray-900">
+                        {s.name}
+                      </td>
 
-            {/* NAME */}
-            <td className="p-4 text-base font-semibold text-gray-800">
-              {s.name}
-            </td>
+                      {/* CLASS */}
+                      <td className="p-4">
+                        {s.className}
+                      </td>
 
-            {/* CLASS */}
-            <td className="p-4 text-base">
-              {s.className}
-            </td>
+                      {/* FATHER */}
+                      <td className="p-4">
+                        {s.fatherName}
+                      </td>
 
-            {/* ATTENDANCE */}
-            <td className="p-4 text-center text-[20px] font-semibold">
-              <div className="text-green-700">P: {presentCount}</div>
-              <div className="text-red-600">A: {absentCount}</div>
-            </td>
+                      {/* ATTENDANCE */}
+                      <td className="p-4 text-center space-x-2">
+                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">
+                          P: {presentCount}
+                        </span>
+                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700">
+                          A: {absentCount}
+                        </span>
+                      </td>
 
-            {/* TOTAL FEES */}
-            <td className="p-4 text-center text-base font-semibold text-green-700">
-              ₹{totalFees}
-            </td>
+                      {/* TOTAL */}
+                      <td className="p-4 text-center font-semibold text-green-700">
+                        ₹{totalFees}
+                      </td>
 
-            {/* PAID FEES */}
-            <td className="p-4 text-center text-base font-semibold text-purple-700">
-              ₹{paidFees}
-            </td>
+                      {/* PAID */}
+                      <td className="p-4 text-center font-semibold text-purple-700">
+                        ₹{paidFees}
+                      </td>
 
-            {/* STATUS */}
-            <td className="p-4 text-center">
-              {paidFees >= totalFees ? (
-                <span className="bg-green-100 text-green-700 px-4 py-1 rounded-full text-sm font-bold">
-                  PAID
-                </span>
-              ) : (
-                <span className="bg-orange-100 text-orange-700 px-4 py-1 rounded-full text-sm font-bold">
-                  PENDING
-                </span>
-              )}
-            </td>
+                      {/* STATUS */}
+                      <td className="p-4 text-center">
+                        {paidFees >= totalFees ? (
+                          <span className="px-4 py-1 rounded-full text-sm font-bold
+                    bg-green-100 text-green-700 border border-green-300">
+                            PAID
+                          </span>
+                        ) : (
+                          <span className="px-4 py-1 rounded-full text-sm font-bold
+                    bg-orange-100 text-orange-700 border border-orange-300">
+                            PENDING
+                          </span>
+                        )}
+                      </td>
 
-            {/* ACTION */}
-            <td className="p-4 flex gap-2 justify-center">
-              {paidFees >= totalFees ? (
-                <button
-                  onClick={() => {
-                    setReceiptStudent(s);
-                    setShowReceipt(true);
-                  }}
-                  className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-semibold"
-                >
-                  Receipt
-                </button>
-              ) : (
-                <button
-                  onClick={() => handlePayFees(s)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-semibold"
-                >
-                  Pay
-                </button>
-              )}
+                      {/* ACTION */}
+                      <td className="p-4 flex gap-2 justify-center">
 
-              <button
-                onClick={() => {
-                  setEditStudent(s);
-                  setOpen(true);
-                }}
-                className="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold"
-              >
-                Edit
-              </button>
+                        {paidFees >= totalFees ? (
+                          <button
+                            onClick={() => {
+                              setReceiptStudent(s);
+                              setShowReceipt(true);
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-semibold
+                      bg-gradient-to-r from-purple-600 to-purple-500
+                      text-white shadow hover:from-purple-700 hover:to-purple-600
+                      transition"
+                          >
+                            Receipt
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handlePayFees(s)}
+                            className="px-4 py-2 rounded-lg text-sm font-semibold
+                      bg-gradient-to-r from-blue-600 to-blue-500
+                      text-white shadow hover:from-blue-700 hover:to-blue-600
+                      transition"
+                          >
+                            Pay
+                          </button>
+                        )}
 
-              <button
-                onClick={() => handleDelete(s.id)}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold"
-              >
-                Delete
-              </button>
-            </td>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="px-4 py-2 rounded-lg text-sm font-semibold
+                    border border-red-500 text-red-600
+                    hover:bg-red-600 hover:text-white
+                    transition"
+                        >
+                          Delete
+                        </button>
 
-          </tr>
-        );
-      })}
-    </tbody>
-  </table>
-</div>
+                      </td>
 
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {/* Agar search result khali ho */}
+            {filteredStudents.length === 0 && (
+              <div className="p-10 text-center text-gray-500">
+                No students found matching your search.
+              </div>
+            )}
+          </div>
         )}
+
       </div>
 
-      {/* ADD / EDIT */}
       {open && (
         <AddStudent
           close={() => { setOpen(false); setEditStudent(null); }}
@@ -310,28 +352,23 @@ export default function StudentList() {
         />
       )}
 
-      {/* RECEIPT */}
       {showReceipt && receiptStudent && (
-  <div
-    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-    onClick={() => setShowReceipt(false)}   // backdrop click close
-  >
-    <div onClick={(e) => e.stopPropagation()}>
-     <FeesReceipt
-  name={receiptStudent.name}
-  studentClass={receiptStudent.className}   // ✅ FIX
-  
-  monthlyFee={receiptStudent.fees?.[month]?.paid}
-  payMonth={month}
-  paidAt={receiptStudent.fees?.[month]?.paidAt} // ✅ REAL DATE
-  onClose={() => setShowReceipt(false)}
-/>
-
-    </div>
-  </div>
-)}
-
-
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowReceipt(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <FeesReceipt
+              name={receiptStudent.name}
+              studentClass={receiptStudent.className}
+              monthlyFee={receiptStudent.fees?.[month]?.paid}
+              payMonth={month}
+              paidAt={receiptStudent.fees?.[month]?.paidAt}
+              onClose={() => setShowReceipt(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
