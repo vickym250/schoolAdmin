@@ -15,6 +15,7 @@ import IDCardGenerator from "./page/Idcard";
 
 // Naya Profile Page Import karein
 import StudentProfile from "./page/StudentProfile"; 
+import AbsentStudents from "./page/AbsentStudents";
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
                   <Route path="/result" element={<FinalResultPage />} />
                   <Route path="/fees" element={<FeesReceipt />} />
                   <Route path="/idcard" element={<IDCardGenerator />} />
+                  <Route path="/absentstudent" element={<AbsentStudents />} />
                 </Routes>
               </div>
             </div>

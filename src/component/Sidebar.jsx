@@ -18,6 +18,7 @@ const Sidebar = () => {
     { path: "/", name: "Dashboard", icon: <FaHome /> },
     { path: "/student", name: "Students", icon: <FaUsers /> },
      { path: "/attendance", name: "Attendance", icon: <FaClipboardList /> },
+     { path: "/absentstudent", name: "AbsentStudent", icon: <FaClipboardList /> },
     { path: "/homework", name: "Homework", icon: <FaBook /> },
     { path: "/notice", name: "Notices", icon: <FaBell /> },
     { path: "/result", name: "Result", icon: <FaBell /> },
