@@ -1,96 +1,61 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  FaHome,
-  FaUsers,
-  FaBook,
-  FaBell,
-  FaClipboardList,
-  FaUserTie,
-  FaBars,
-  FaTimes,
-} from "react-icons/fa";
+import { useSidebar } from "./SidebarContext";
+import { FaHome, FaUsers, FaBook, FaBell, FaClipboardList, FaUserTie, FaTimes } from "react-icons/fa";
 
 const Sidebar = () => {
-  const [open, setOpen] = useState(false);
+  const { isOpen, setIsOpen } = useSidebar();
 
   const menuItems = [
     { path: "/", name: "Dashboard", icon: <FaHome /> },
     { path: "/student", name: "Students", icon: <FaUsers /> },
-     { path: "/attendance", name: "Attendance", icon: <FaClipboardList /> },
-     { path: "/absentstudent", name: "AbsentStudent", icon: <FaClipboardList /> },
+    { path: "/attendance", name: "Attendance", icon: <FaClipboardList /> },
+    { path: "/absentstudent", name: "Absent Student", icon: <FaClipboardList /> },
     { path: "/homework", name: "Homework", icon: <FaBook /> },
     { path: "/notice", name: "Notices", icon: <FaBell /> },
     { path: "/result", name: "Result", icon: <FaBell /> },
-   
-    { path: "/test", name: "Test System", icon: <FaClipboardList /> },
-    { path: "/teacherattendace", name: "Teacher Attendance", icon: <FaClipboardList /> },
     { path: "/teacher", name: "Teachers", icon: <FaUserTie /> },
-    { path: "/idcard", name: "IdCard", icon: <FaUserTie /> },
   ];
 
   return (
     <>
-      {/* ☰ Mobile Toggle Button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 bg-gray-900 text-white p-2 rounded-lg"
-      >
-        <FaBars size={20} />
-      </button>
-
-      {/* Overlay (Mobile) */}
-      {open && (
-        <div
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-        />
+      {/* Overlay for Mobile */}
+      {isOpen && (
+        <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/50 z-40 md:hidden" />
       )}
 
       {/* Sidebar */}
-      <div
-        className={`
-          fixed top-0 left-0 h-screen w-64
-          bg-gray-900/95 backdrop-blur-md text-white
-          shadow-xl border-r border-gray-700
-          z-50 transform transition-transform duration-300
-          ${open ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0
-        `}
-      >
-        {/* Header */}
+      <div className={`
+         absolute top-0 left-0 h-screen bg-gray-900 text-white z-50 
+        transition-all duration-300 border-r border-gray-700
+        ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full md:w-20 md:translate-x-0"}
+        overflow-hidden
+      `}>
+        {/* Header inside Sidebar (Optional) */}
         <div className="flex items-center justify-between p-5 border-b border-gray-700">
-          <h1 className="text-2xl font-extrabold tracking-wide">
+          <h1 className={`font-bold transition-opacity ${isOpen ? "opacity-100" : "opacity-0 md:hidden"}`}>
             Admin Panel
           </h1>
-
-          {/* ❌ Close (Mobile) */}
-          <button
-            onClick={() => setOpen(false)}
-            className="md:hidden text-gray-300 hover:text-white"
-          >
+          <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-300">
             <FaTimes size={20} />
           </button>
         </div>
 
-        {/* MENU (Scrollable) */}
-        <ul className="p-4 space-y-3 overflow-y-auto h-[calc(100vh-80px)]">
+        {/* Menu Items */}
+        <ul className="p-4 space-y-3">
           {menuItems.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                onClick={() => setOpen(false)}
+                onClick={() => setIsOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-4 p-3 rounded-lg transition-all duration-200 
-                  ${
-                    isActive
-                      ? "bg-blue-600 shadow-lg scale-105"
-                      : "hover:bg-gray-700"
-                  }`
+                  `flex items-center gap-4 p-3 rounded-lg transition-all 
+                  ${isActive ? "bg-blue-600 shadow-lg" : "hover:bg-gray-700 text-gray-300"}`
                 }
               >
                 <span className="text-xl">{item.icon}</span>
-                <span className="text-base">{item.name}</span>
+                <span className={`whitespace-nowrap ${!isOpen && "md:hidden"}`}>
+                  {item.name}
+                </span>
               </NavLink>
             </li>
           ))}

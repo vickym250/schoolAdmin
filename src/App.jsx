@@ -16,8 +16,14 @@ import IDCardGenerator from "./page/Idcard";
 // Naya Profile Page Import karein
 import StudentProfile from "./page/StudentProfile"; 
 import AbsentStudents from "./page/AbsentStudents";
+import { useSidebar } from "./component/SidebarContext";
 
 export default function App() {
+
+const { isOpen, setIsOpen } = useSidebar();
+  console.log(isOpen);
+  
+
   return (
     <BrowserRouter>
       <Routes>
@@ -30,7 +36,7 @@ export default function App() {
           element={
             <div className="flex">
               <Sidebar />
-              <div className="ml-64 w-full">
+              <div className={`${isOpen ? "ml-64" : "  ml-0  md:ml-20 "}    w-full`}>
                 <Header />
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
