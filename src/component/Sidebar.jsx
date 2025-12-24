@@ -14,6 +14,7 @@ const Sidebar = () => {
     { path: "/notice", name: "Notices", icon: <FaBell /> },
     { path: "/result", name: "Result", icon: <FaBell /> },
     { path: "/teacher", name: "Teachers", icon: <FaUserTie /> },
+    { path: "/idcard", name: "Idcard", icon: <FaUserTie /> },
   ];
 
   return (

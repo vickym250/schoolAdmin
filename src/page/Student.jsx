@@ -14,51 +14,59 @@ import {
 import toast from "react-hot-toast";
 
 export default function StudentList() {
+  /* =================== BASIC =================== */
   const sessions = ["2024-25", "2025-26", "2026-27"];
   const [session, setSession] = useState("2025-26");
 
   const months = [
-     "April", "May", "June",
-    "July", "August", "September", "October", "November", "December","January", "February", "March",
+    "April", "May", "June",
+    "July", "August", "September",
+    "October", "November", "December",
+    "January", "February", "March",
   ];
 
-  const [month, setMonth] = useState(months[new Date().getMonth()]);
+  const [month, setMonth] = useState("April");
   const [className, setClassName] = useState("Class 10");
+
+  /* =================== UI =================== */
   const [open, setOpen] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptStudent, setReceiptStudent] = useState(null);
+
+  /* =================== DATA =================== */
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const sessionMonthKey = `${session}_${month}`;
-
+  /* =================== LOAD STUDENTS =================== */
   useEffect(() => {
     const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(s => !s.deletedAt);
-      setStudents(data);
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((s) => !s.deletedAt);
+      setStudents(list);
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  /* 🔥 YAHAN CHANGE KIYA HAI: Session Filter Add Kiya */
+  /* =================== FILTER =================== */
   const filteredStudents = students.filter((s) => {
-    const matchesSession = s.session === session; // Student ka session match hona chahiye
-    const matchesClass = s.className?.toLowerCase() === className.toLowerCase();
-    const matchesSearch = 
-      s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchSession = s.session === session;
+    const matchClass =
+      s.className?.toLowerCase() === className.toLowerCase();
+    const matchSearch =
+      s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.rollNumber?.toString().includes(searchTerm);
-    
-    return matchesSession && matchesClass && matchesSearch;
+
+    return matchSession && matchClass && matchSearch;
   });
 
+  /* =================== PAY FEES =================== */
   const handlePayFees = async (student) => {
-    const fee = student.fees?.[sessionMonthKey] || { total: 0, paid: 0 };
+    const fee = student.fees?.[month] || { total: 0, paid: 0 };
     const total = Number(fee.total || student.admissionFees || 0);
     const paid = Number(fee.paid || 0);
 
@@ -69,168 +77,209 @@ export default function StudentList() {
 
     toast((t) => (
       <div>
-        <p className="font-semibold">Pay full fees ₹{total} for {month} ({session})?</p>
-        <div className="flex gap-2 mt-2">
+        <p className="font-semibold">
+          Pay full fees ₹{total} for {month} ({session})?
+        </p>
+        <div className="flex gap-2 mt-3">
           <button
             className="bg-green-600 text-white px-3 py-1 rounded"
             onClick={async () => {
               await updateDoc(doc(db, "students", student.id), {
-                [`fees.${sessionMonthKey}.paid`]: total,
-                [`fees.${sessionMonthKey}.total`]: total,
-                [`fees.${sessionMonthKey}.paidAt`]: serverTimestamp(),
+                [`fees.${month}.paid`]: total,
+                [`fees.${month}.total`]: total,
+                [`fees.${month}.paidAt`]: serverTimestamp(),
               });
               toast.dismiss(t.id);
-              toast.success("Fees Paid Successfully!");
+              toast.success("Fees Paid Successfully");
             }}
-          > Yes </button>
-          <button className="bg-gray-300 px-3 py-1 rounded" onClick={() => toast.dismiss(t.id)}> No </button>
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 px-3 py-1 rounded"
+            onClick={() => toast.dismiss(t.id)}
+          >
+            No
+          </button>
         </div>
       </div>
     ));
   };
 
+  /* =================== DELETE =================== */
   const handleDelete = (id) => {
     toast((t) => (
       <div>
         <p className="font-semibold text-red-600">Delete this student?</p>
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-3">
           <button
             className="bg-red-600 text-white px-3 py-1 rounded"
             onClick={async () => {
-              await updateDoc(doc(db, "students", id), { deletedAt: serverTimestamp() });
+              await updateDoc(doc(db, "students", id), {
+                deletedAt: serverTimestamp(),
+              });
               toast.dismiss(t.id);
-              toast.success("Student Archived!");
+              toast.success("Student Archived");
             }}
-          > Yes </button>
-          <button className="bg-gray-300 px-3 py-1 rounded" onClick={() => toast.dismiss(t.id)}> No </button>
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 px-3 py-1 rounded"
+            onClick={() => toast.dismiss(t.id)}
+          >
+            No
+          </button>
         </div>
       </div>
     ));
   };
 
+  /* =================== UI =================== */
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <div className={`bg-white p-6 rounded-xl shadow ${open ? "blur-2xl" : ""}`}>
-        <h2 className="text-2xl font-bold mb-4">Student List ({session})</h2>
+      <div className={`bg-white p-6 rounded-xl shadow ${open ? "blur-sm" : ""}`}>
+        <h2 className="text-2xl font-bold mb-4">
+          Student List ({session})
+        </h2>
 
-        <div className="flex flex-wrap gap-4 mb-4 items-center">
-          <select
-            value={session}
-            onChange={(e) => setSession(e.target.value)}
-            className="border px-3 py-2 rounded bg-blue-50 font-bold border-blue-200 outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            {sessions.map(s => <option key={s} value={s}>{s}</option>)}
+        {/* CONTROLS */}
+        <div className="flex flex-wrap gap-3 mb-4 items-center">
+          <select value={session} onChange={(e) => setSession(e.target.value)}
+            className="border px-3 py-2 rounded font-bold bg-blue-50">
+            {sessions.map((s) => <option key={s}>{s}</option>)}
           </select>
 
-          <select value={month} onChange={(e) => setMonth(e.target.value)} className="border px-3 py-2 rounded">
-            {months.map(m => <option key={m}>{m}</option>)}
+          <select value={month} onChange={(e) => setMonth(e.target.value)}
+            className="border px-3 py-2 rounded">
+            {months.map((m) => <option key={m}>{m}</option>)}
           </select>
 
-          <select value={className} onChange={(e) => setClassName(e.target.value)} className="border px-3 py-2 rounded">
-            {Array.from({ length: 12 }, (_, i) => (<option key={i}>Class {i + 1}</option>))}
+          <select value={className} onChange={(e) => setClassName(e.target.value)}
+            className="border px-3 py-2 rounded">
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i}>Class {i + 1}</option>
+            ))}
           </select>
 
           <input
             type="text"
-            placeholder="Search by name or roll..."
+            placeholder="Search name / roll"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="border px-4 py-2 rounded-lg flex-1 min-w-[200px] outline-none focus:ring-2 focus:ring-blue-400"
+            className="border px-4 py-2 rounded flex-1 min-w-[200px]"
           />
 
-          <button onClick={() => { setEditStudent(null); setOpen(true); }} className="bg-amber-300 px-4 py-2 rounded font-bold">
+          <button
+            onClick={() => { setEditStudent(null); setOpen(true); }}
+            className="bg-amber-300 px-4 py-2 rounded font-bold"
+          >
             Add Student
           </button>
         </div>
 
+        {/* TABLE */}
         {!loading && (
-          <div className="overflow-x-auto rounded-2xl border bg-white shadow">
-            <table className="w-full text-base text-left">
-              <thead className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700">
+          <div className="overflow-x-auto rounded-xl border bg-white">
+            <table className="w-full text-left">
+              <thead className="bg-gray-200">
                 <tr>
-                  <th className="p-4">Photo</th>
-                  <th className="p-4">Roll</th>
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Class</th>
-                  <th className="p-4">Father</th>
-                  <th className="p-4 text-center">Attendance ({month})</th>
-                  <th className="p-4 text-center">Total</th>
-                  <th className="p-4 text-center">Paid</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-center">Action</th>
+                  <th className="p-3">Photo</th>
+                  <th className="p-3">Roll</th>
+                  <th className="p-3">Name</th>
+                  <th className="p-3">Class</th>
+                  <th className="p-3">Father</th>
+                  <th className="p-3 text-center">Total</th>
+                  <th className="p-3 text-center">Paid</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filteredStudents.map((s) => {
-                  const fee = s.fees?.[sessionMonthKey] || { total: 0, paid: 0 };
-                  const totalFees = Number(fee.total || s.admissionFees || 0);
-                  const paidFees = Number(fee.paid || 0);
-
-                  const attendanceRoot = s.attendance || {};
-                  const dayEntries = Object.entries(attendanceRoot).filter(
-                    ([key, value]) =>
-                      key.startsWith(`${session}_${month}_day_`) && 
-                      (value === "P" || value === "A")
-                  );
-
-                  const presentCount = dayEntries.filter(([_, v]) => v === "P").length;
-                  const absentCount = dayEntries.filter(([_, v]) => v === "A").length;
+                  const fee = s.fees?.[month] || { total: 0, paid: 0 };
+                  const total = Number(fee.total || s.admissionFees || 0);
+                  const paid = Number(fee.paid || 0);
 
                   return (
-                    <tr key={s.id} className="border-b hover:bg-blue-50 transition">
-                      <td className="p-4">
+                    <tr key={s.id} className="border-b hover:bg-blue-50">
+                      <td className="p-3">
                         {s.photoURL ? (
-                          <img src={s.photoURL} alt="" className="w-12 h-12 rounded-full object-cover border" />
+                          <img src={s.photoURL} className="w-10 h-10 rounded-full object-cover" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center font-bold">{s.name?.charAt(0)}</div>
+                          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                            {s.name?.[0]}
+                          </div>
                         )}
                       </td>
-                      <td className="p-4 font-semibold text-gray-700">{s.rollNumber}</td>
-                      <td className="p-4 font-bold text-gray-900">{s.name}</td>
-                      <td className="p-4">{s.className}</td>
-                      <td className="p-4">{s.fatherName}</td>
-                      <td className="p-4 text-center space-x-2">
-                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700">P: {presentCount}</span>
-                        <span className="inline-block px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700">A: {absentCount}</span>
-                      </td>
-                      <td className="p-4 text-center font-semibold text-green-700">₹{totalFees}</td>
-                      <td className="p-4 text-center font-semibold text-purple-700">₹{paidFees}</td>
-                      <td className="p-4 text-center">
-                        {paidFees >= totalFees && totalFees > 0 ? (
-                          <span className="px-4 py-1 rounded-full text-sm font-bold bg-green-100 text-green-700 border border-green-300">PAID</span>
+                      <td className="p-3">{s.rollNumber}</td>
+                      <td className="p-3 font-bold">{s.name}</td>
+                      <td className="p-3">{s.className}</td>
+                      <td className="p-3">{s.fatherName}</td>
+                      <td className="p-3 text-center">₹{total}</td>
+                      <td className="p-3 text-center">₹{paid}</td>
+                      <td className="p-3 text-center">
+                        {paid >= total && total > 0 ? (
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">PAID</span>
                         ) : (
-                          <span className="px-4 py-1 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-300">PENDING</span>
+                          <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full">PENDING</span>
                         )}
                       </td>
-                      <td className="p-4 flex gap-2 justify-center">
-                        {paidFees >= totalFees && totalFees > 0 ? (
-                          <button onClick={() => { setReceiptStudent(s); setShowReceipt(true); }} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow transition"> Receipt </button>
+                      <td className="p-3 text-center flex gap-2 justify-center">
+                        {paid >= total && total > 0 ? (
+                          <button
+                            onClick={() => { setReceiptStudent(s); setShowReceipt(true); }}
+                            className="bg-purple-600 text-white px-3 py-1 rounded">
+                            Receipt
+                          </button>
                         ) : (
-                          <button onClick={() => handlePayFees(s)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow transition"> Pay </button>
+                          <button
+                            onClick={() => handlePayFees(s)}
+                            className="bg-blue-600 text-white px-3 py-1 rounded">
+                            Pay
+                          </button>
                         )}
-                        <button onClick={() => handleDelete(s.id)} className="px-4 py-2 rounded-lg text-sm font-semibold border border-red-500 text-red-600 hover:bg-red-600 hover:text-white transition"> Delete </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="border border-red-500 text-red-600 px-3 py-1 rounded">
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            {filteredStudents.length === 0 && <div className="p-10 text-center text-gray-500">No students found for {session} in {className}.</div>}
+
+            {filteredStudents.length === 0 && (
+              <div className="p-6 text-center text-gray-500">
+                No students found
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {open && <AddStudent close={() => { setOpen(false); setEditStudent(null); }} editData={editStudent} />}
+      {open && (
+        <AddStudent
+          close={() => { setOpen(false); setEditStudent(null); }}
+          editData={editStudent}
+        />
+      )}
 
       {showReceipt && receiptStudent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowReceipt(false)}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowReceipt(false)}
+        >
           <div onClick={(e) => e.stopPropagation()}>
             <FeesReceipt
               name={receiptStudent.name}
               studentClass={receiptStudent.className}
-              monthlyFee={receiptStudent.fees?.[sessionMonthKey]?.paid}
+              monthlyFee={receiptStudent.fees?.[month]?.paid}
               payMonth={`${month} (${session})`}
-              paidAt={receiptStudent.fees?.[sessionMonthKey]?.paidAt}
+              paidAt={receiptStudent.fees?.[month]?.paidAt}
               onClose={() => setShowReceipt(false)}
             />
           </div>

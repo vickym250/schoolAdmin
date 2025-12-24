@@ -2,360 +2,488 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { 
   collection, addDoc, getDocs, query, where, serverTimestamp,
-  doc, deleteDoc 
+  doc, deleteDoc, updateDoc 
 } from "firebase/firestore";
 import toast, { Toaster } from "react-hot-toast";
 
-// --- 1. REPORT CARD MODAL (Dynamic Logic) ---
+/* ==========================================
+   1. REPORT CARD MODAL (WITH LOGO & PHOTO)
+   ========================================== */
+/* ==========================================
+   1. REPORT CARD MODAL (PRINT OPTIMIZED)
+   ========================================== */
+
+import { useNavigate } from "react-router-dom";
+
 const ReportCardModal = ({ data, onClose }) => {
+  const navigate = useNavigate();
+ console.log(data);
+ 
   if (!data) return null;
 
-  // Pichle marks ko subjects mein divide karne ka logic
-  const getSubjectWisePrevMarks = (totalPrevMarks) => {
-    if (!totalPrevMarks || !data.rows || data.rows.length === 0) return 0;
-    return Math.round(totalPrevMarks / data.rows.length);
-  };
+  const { exam, rows, studentId , id } = data;
 
-  const isQuarterly = data.exam === "Quarterly";
-  const isHalfYearly = data.exam === "Half-Yearly";
-  const isAnnual = data.exam === "Annual";
+
+  // 🔥 AUTO NAVIGATE ONLY FOR ANNUAL
+  useEffect(() => {
+    if (exam === "Annual" && studentId) {
+      navigate(`/marksheet/${studentId}`, { replace: true });
+    }
+  }, [exam, id, navigate]);
+
+  // ❌ Annual ke liye modal render hi nahi hoga
+  if (exam === "Annual") return null;
+
+  // 🔒 LOGIC (UNCHANGED)
+  const grandTotalObt = rows.reduce((s, r) => s + (Number(r.marks) || 0), 0);
+  const grandTotalMax = rows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const percent = grandTotalMax
+    ? ((grandTotalObt / grandTotalMax) * 100).toFixed(2)
+    : "0.00";
+  const grade = Number(percent) >= 33 ? "PASS" : "FAIL";
+
+  const handlePrint = () => window.print();
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[60] p-4 overflow-y-auto font-sans tracking-tight">
-      <div className="bg-white w-full max-w-4xl p-8 rounded-lg shadow-2xl relative print:p-0 print:shadow-none print:m-0 print:rounded-none">
-        
-        {/* Buttons (Hidden on Print) */}
-        <div className="absolute top-4 right-4 flex gap-2 print:hidden">
-          <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2 rounded-xl font-bold shadow-lg">🖨️ Print Marksheet</button>
-          <button onClick={onClose} className="bg-slate-100 text-slate-600 px-5 py-2 rounded-xl font-bold border">❌ Close</button>
+    <div className="fixed inset-0 bg-black/90 z-[999] flex justify-center items-start overflow-y-auto p-4 md:p-10">
+
+      {/* ✅ PRINT CSS */}
+      <style>
+        {`
+        @media print {
+
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+
+          html, body {
+            width: 210mm;
+            height: 297mm;
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            overflow: hidden !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #printable-area,
+          #printable-area * {
+            visibility: visible !important;
+          }
+
+          #printable-area {
+            position: relative;
+            width: 190mm;
+            max-height: 277mm;
+            margin: 0 auto;
+            padding: 0;
+            border: none !important;
+            box-shadow: none !important;
+
+            transform: scale(0.94);
+            transform-origin: top center;
+
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          table, tr, td, th {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+        }
+        `}
+      </style>
+
+      {/* MAIN CONTAINER */}
+      <div
+        id="printable-area"
+        className="relative bg-white w-full max-w-[800px] border-[10px] border-double border-blue-900 p-6 md:p-10 font-serif shadow-2xl"
+      >
+        {/* ACTION BUTTONS */}
+        <div className="absolute -top-12 right-0 flex gap-3 no-print">
+          <button
+            onClick={handlePrint}
+            className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg shadow-lg"
+          >
+            🖨️ PRINT RESULT
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-white text-red-600 font-bold rounded-lg shadow-lg"
+          >
+            CLOSE
+          </button>
         </div>
 
-        {/* Marksheet Border */}
-        <div className="border-[8px] border-double border-slate-900 p-8 bg-white min-h-[800px] flex flex-col">
-          <div className="text-center border-b-4 border-slate-900 pb-4 mb-8">
-            <h1 className="text-4xl font-black uppercase tracking-tighter text-slate-900">Academic Progress Report</h1>
-            <p className="font-bold text-slate-600 uppercase tracking-widest mt-1">Session: {data.session} | {data.exam} Examination</p>
+        {/* HEADER */}
+        <div className="text-center border-b-4 border-blue-900 pb-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-black uppercase text-blue-900">
+            Board of Intermediate & Secondary Education
+          </h1>
+          <p className="text-md font-bold text-gray-600 tracking-widest uppercase">
+            Provisional Result Card
+          </p>
+        </div>
+
+        {/* BASIC INFO + PHOTO */}
+        <div className="flex flex-col md:flex-row gap-6 mb-8">
+          <div className="flex-1 grid gap-y-2 text-sm">
+            <div className="flex border-b py-1">
+              <span className="w-32 font-bold text-blue-900">Candidate:</span>
+              <span className="uppercase">{data.name}</span>
+            </div>
+            <div className="flex border-b py-1">
+              <span className="w-32 font-bold text-blue-900">Roll No:</span>
+              <span>{data.roll}</span>
+            </div>
+            <div className="flex border-b py-1">
+              <span className="w-32 font-bold text-blue-900">Father:</span>
+              <span className="uppercase">{data.fatherName}</span>
+            </div>
+            <div className="flex border-b py-1">
+              <span className="w-32 font-bold text-blue-900">Class:</span>
+              <span className="uppercase">{data.className}</span>
+            </div>
           </div>
 
-          {/* Student Info */}
-          <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-[13px] mb-8 pb-6 border-b-2 border-slate-100 font-bold uppercase text-slate-700">
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Student Name:</span> <span className="text-slate-900 font-black">{data.name}</span></div>
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Roll Number:</span> <span className="text-slate-900 font-black">{data.roll}</span></div>
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Father's Name:</span> <span className="text-slate-900 font-black">{data.fatherName}</span></div>
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Class:</span> <span className="text-slate-900 font-black">{data.className}</span></div>
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Date of Birth:</span> <span className="text-slate-900 font-black">{data.dob}</span></div>
-            <div className="flex justify-between border-b border-slate-200 pb-1"><span>Gender:</span> <span className="text-slate-900 font-black">{data.gender}</span></div>
-          </div>
-
-          {/* Dynamic Academic Table */}
-          <div className="flex-grow">
-            <table className="w-full border-collapse border-[3px] border-slate-900 text-center uppercase tracking-tighter">
-              <thead>
-                <tr className="bg-slate-900 text-white text-[12px] font-black uppercase tracking-widest">
-                  <th className="border-2 border-slate-700 p-4 text-left">Subjects Name</th>
-                  <th className="border-2 border-slate-700 p-4 w-24">Quarterly</th>
-                  {(isHalfYearly || isAnnual) && <th className="border-2 border-slate-700 p-4 w-24">Half-Yearly</th>}
-                  {isAnnual && <th className="border-2 border-slate-700 p-4 w-24 bg-slate-800">Annual</th>}
-                  <th className="border-2 border-slate-700 p-4 w-28 bg-indigo-800 text-white">Sub. Total</th>
-                </tr>
-              </thead>
-              <tbody className="text-[14px] font-black text-slate-800 uppercase">
-                {data.rows.map((row, i) => {
-                  const qMarks = getSubjectWisePrevMarks(data.quarterlyMarks);
-                  const hyMarks = getSubjectWisePrevMarks(data.halfYearlyMarks);
-                  
-                  // Sub Total calculation based on current exam
-                  let subTotal = Number(row.marks);
-                  if (isHalfYearly) subTotal += Number(qMarks);
-                  if (isAnnual) subTotal += Number(qMarks) + Number(hyMarks);
-
-                  return (
-                    <tr key={i}>
-                      <td className="border-2 border-slate-900 p-3 text-left bg-slate-50 font-black uppercase">{row.subject}</td>
-                      <td className="border-2 border-slate-900 p-3">{isQuarterly ? row.marks : qMarks}</td>
-                      {(isHalfYearly || isAnnual) && <td className="border-2 border-slate-900 p-3">{isHalfYearly ? row.marks : hyMarks}</td>}
-                      {isAnnual && <td className="border-2 border-slate-900 p-3 bg-amber-50">{row.marks}</td>}
-                      <td className="border-2 border-slate-900 p-3 bg-indigo-50 text-indigo-700">{subTotal}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-900 text-white font-black text-[15px]">
-                  <td className="border-2 border-slate-900 p-4 text-right pr-6 tracking-widest">GRAND TOTAL MARKS</td>
-                  <td className="border-2 border-slate-900 p-4 text-center">{isQuarterly ? data.obtained : (data.quarterlyMarks || 0)}</td>
-                  {(isHalfYearly || isAnnual) && <td className="border-2 border-slate-900 p-4 text-center">{isHalfYearly ? data.obtained : (data.halfYearlyMarks || 0)}</td>}
-                  {isAnnual && <td className="border-2 border-slate-900 p-4 text-center">{data.obtained}</td>}
-                  <td className="border-2 border-slate-900 p-4 bg-indigo-700 text-center font-black">
-                    {isAnnual ? data.grandTotal : (isHalfYearly ? (Number(data.quarterlyMarks) + Number(data.obtained)) : data.obtained)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* Performance Box */}
-          <div className="mt-8 flex justify-between items-center bg-slate-50 border-2 border-slate-900 p-5 rounded-2xl font-black uppercase shadow-sm">
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-slate-400 mb-1">Marks Analysis</p>
-                <p className="text-2xl">{isAnnual ? data.grandTotal : (isHalfYearly ? (Number(data.quarterlyMarks) + Number(data.obtained)) : data.obtained)} / {isAnnual ? data.grandMaxMarks : (isHalfYearly ? data.totalMarks * 2 : data.totalMarks)}</p>
-              </div>
-              <div className="text-center flex-1 border-x-2 border-slate-200 px-4">
-                <p className="text-[10px] text-indigo-400 mb-1 tracking-widest uppercase">Percentage</p>
-                <p className="text-3xl text-indigo-600">{data.percent}%</p>
-              </div>
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-slate-400 mb-1 tracking-widest uppercase">Final Grade</p>
-                <p className={`text-3xl ${data.grade === 'Fail' ? 'text-red-600' : 'text-emerald-600'}`}>{data.grade}</p>
-              </div>
-          </div>
-
-          <div className="mt-16 flex justify-between items-end px-4 uppercase font-black text-[11px] text-slate-600 tracking-widest">
-            <div className="text-center"><div className="w-40 border-b-2 border-slate-900 mb-2"></div><p>Teacher Sign</p></div>
-            <div className="text-center mb-4 text-[10px] text-slate-800 tracking-widest">Issue Date: {data.issueDate}</div>
-            <div className="text-center"><div className="w-40 border-b-2 border-slate-900 mb-2"></div><p>Principal Sign</p></div>
+          <div className="w-32 h-36 border-2 border-blue-900 bg-gray-50 flex items-center justify-center overflow-hidden">
+            {data.photoURL ? (
+              <img
+                src={data.photoURL}
+                alt="Student"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-[10px] uppercase text-gray-400">
+                Student Photo
+              </span>
+            )}
           </div>
         </div>
+
+        {/* MARKS TABLE */}
+        <table className="w-full border-2 border-black mb-6 text-sm">
+          <thead>
+            <tr className="bg-blue-900 text-white">
+              <th className="border p-2">SR</th>
+              <th className="border p-2 text-left">SUBJECT</th>
+              <th className="border p-2">TOTAL</th>
+              <th className="border p-2">OBTAINED</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="border p-2 text-center">{i + 1}</td>
+                <td className="border p-2 uppercase font-bold">{r.subject}</td>
+                <td className="border p-2 text-center">{r.total}</td>
+                <td className="border p-2 text-center font-black">{r.marks}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-200 font-black">
+              <td colSpan="2" className="border p-2 text-right">
+                GRAND TOTAL
+              </td>
+              <td className="border p-2 text-center">{grandTotalMax}</td>
+              <td className="border p-2 text-center">{grandTotalObt}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {/* RESULT SUMMARY */}
+        <div className="flex justify-between border-2 border-blue-900 p-4 rounded-lg mb-10">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Percentage</p>
+            <p className="text-xl font-bold">{percent}%</p>
+          </div>
+          <div className="text-center px-6 border-x-2 border-blue-900">
+            <p className="text-xs text-gray-500">Result</p>
+            <p
+              className={`text-xl font-black ${
+                grade === "FAIL" ? "text-red-600" : "text-green-600"
+              }`}
+            >
+              {grade}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Division</p>
+            <p className="text-xl font-bold">
+              {percent >= 60 ? "1st" : percent >= 45 ? "2nd" : "3rd"}
+            </p>
+          </div>
+        </div>
+
+        {/* SIGNATURE */}
+        <div className="flex justify-between mt-12">
+          <div className="text-center">
+            <div className="w-32 border-b border-black mb-1"></div>
+            <p className="text-[10px] uppercase font-bold">Clerk</p>
+          </div>
+          <div className="text-center">
+            <div className="w-48 border-b border-black mb-1"></div>
+            <p className="text-[10px] uppercase font-bold">
+              Controller of Examinations
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[8px] text-gray-400 mt-6 text-center italic">
+          * Provisional Result Card – Generated on{" "}
+          {new Date().toLocaleDateString()}
+        </p>
       </div>
     </div>
   );
 };
 
-// --- 2. MAIN PAGE COMPONENT ---
-export default function FinalResultPage() {
-  const sessions = ["2024-25", "2025-26", "2026-27"];
-  const classesList = ["Class 1","Class 2","Class 3","Class 4","Class 5","Class 6","Class 7","Class 8","Class 9","Class 10","Class 11","Class 12"];
-  const examTypes = ["Quarterly", "Half-Yearly", "Annual"];
 
+
+
+/* ==========================================
+   2. MAIN DASHBOARD PAGE
+   ========================================== */
+export default function FinalResultPage() {
   const [session, setSession] = useState("2025-26");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
   
   const [allStudents, setAllStudents] = useState([]); 
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedStudentPhoto, setSelectedStudentPhoto] = useState(""); // Photo State
   const [studentSearch, setStudentSearch] = useState("");
-  
   const [name, setName] = useState("");
-  const [cls, setCls] = useState("");
-  const [roll, setRoll] = useState("");
-  const [fatherName, setFatherName] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("");
-  const [exam, setExam] = useState("");
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [cls, setCls] = useState("Class 10");
+  const [exam, setExam] = useState("Annual");
   const [rows, setRows] = useState([{ subject: "", total: "100", marks: "" }]);
-
+  
+  const [resultList, setResultList] = useState([]);
   const [filterClass, setFilterClass] = useState("Class 10");
   const [filterExam, setFilterExam] = useState("Annual");
-  const [resultList, setResultList] = useState([]);
+
+  const classesList = Array.from({length: 12}, (_, i) => `Class ${i+1}`);
+  const examTypes = ["Quarterly", "Half-Yearly", "Annual"];
 
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!cls || !showForm) return;
-      const q = query(collection(db, "students"), where("session", "==", session), where("className", "==", cls));
+      const q = query(collection(db, "students"), where("className", "==", cls));
       const snap = await getDocs(q);
       setAllStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     };
     fetchStudents();
-  }, [cls, session, showForm]);
-
-  const filteredStudents = allStudents.filter((s) => 
-    s.name?.toLowerCase().includes(studentSearch.toLowerCase()) || s.rollNumber?.toString().includes(studentSearch)
-  );
-
-  const handleStudentSelect = (student) => {
-    setSelectedStudentId(student.id);
-    setName(student.name);
-    setRoll(student.rollNumber || "");
-    setFatherName(student.fatherName || "");
-    setDob(student.dob || "");
-    setGender(student.gender || "");
-    setStudentSearch(student.name);
-  };
-
-  const addRow = () => setRows([...rows, { subject: "", total: "100", marks: "" }]);
-
-  const saveResult = async () => {
-    if (!selectedStudentId || !exam) {
-      toast.error("Pura details bharein!");
-      return;
-    }
-    setLoading(true);
-    try {
-      let currentObtained = rows.reduce((sum, r) => sum + Number(r.marks), 0);
-      let currentTotal = rows.reduce((sum, r) => sum + Number(r.total), 0);
-      
-      let resultData = {
-        session, issueDate, studentId: selectedStudentId, name, className: cls,
-        roll, fatherName, dob, gender, exam, rows,
-        obtained: currentObtained, totalMarks: currentTotal, createdAt: serverTimestamp(),
-      };
-
-      const q = query(collection(db, "examResults"), where("studentId", "==", selectedStudentId), where("session", "==", session));
-      const prevSnap = await getDocs(q);
-      let q_marks = 0; let hy_marks = 0;
-      prevSnap.forEach((doc) => {
-        const d = doc.data();
-        if (d.exam === "Quarterly") q_marks = d.obtained;
-        if (d.exam === "Half-Yearly") hy_marks = d.obtained;
-      });
-
-      resultData.quarterlyMarks = q_marks;
-      resultData.halfYearlyMarks = hy_marks;
-
-      if (exam === "Annual") {
-        resultData.grandTotal = q_marks + hy_marks + currentObtained;
-        resultData.grandMaxMarks = currentTotal * 3; 
-        resultData.percent = ((resultData.grandTotal / resultData.grandMaxMarks) * 100).toFixed(2);
-      } else if (exam === "Half-Yearly") {
-        resultData.grandTotal = q_marks + currentObtained;
-        resultData.grandMaxMarks = currentTotal * 2;
-        resultData.percent = ((resultData.grandTotal / resultData.grandMaxMarks) * 100).toFixed(2);
-      } else {
-        resultData.grandTotal = currentObtained;
-        resultData.grandMaxMarks = currentTotal;
-        resultData.percent = ((currentObtained / currentTotal) * 100).toFixed(2);
-      }
-
-      let p = resultData.percent;
-      resultData.grade = p >= 90 ? "A+" : p >= 80 ? "A" : p >= 70 ? "B" : p >= 60 ? "C" : p >= 50 ? "D" : "Fail";
-
-      await addDoc(collection(db, "examResults"), resultData);
-      toast.success("Marksheet Published!");
-      setShowForm(false); resetForm(); loadResults();
-    } catch (e) { toast.error("Error saving!"); } finally { setLoading(false); }
-  };
-
-  const resetForm = () => {
-    setSelectedStudentId(""); setStudentSearch(""); setRows([{ subject: "", total: "100", marks: "" }]);
-  };
+  }, [cls]);
 
   const loadResults = async () => {
-    if (!filterClass || !filterExam) return;
-    const q = query(collection(db, "examResults"), where("session", "==", session), where("className", "==", filterClass), where("exam", "==", filterExam));
+    setLoading(true);
+    const q = query(collection(db, "examResults"), where("className", "==", filterClass), where("exam", "==", filterExam));
     const snap = await getDocs(q);
     setResultList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setLoading(false);
   };
 
   useEffect(() => { loadResults(); }, [filterClass, filterExam, session]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Confirm delete?")) {
-      await deleteDoc(doc(db, "examResults", id));
-      loadResults();
-    }
+  const handleRowChange = (index, field, value) => {
+    const newRows = [...rows];
+    newRows[index][field] = value;
+    setRows(newRows);
+  };
+
+  const saveResult = async () => {
+    if (!selectedStudentId || !exam) return toast.error("Bhai, details bharo!");
+    setLoading(true);
+    try {
+      const student = allStudents.find(s => s.id === selectedStudentId);
+      
+      const payload = {
+        session,
+        studentId: selectedStudentId,
+        name: student.name,
+        className: cls,
+        roll: student?.rollNumber || "",
+        fatherName: student?.fatherName || "",
+        photoURL: student?.photoURL || "", // Saving Photo URL from student profile
+        exam,
+        rows: rows.map(r => ({
+          subject: r.subject.trim(),
+          total: Number(r.total),
+          marks: Number(r.marks)
+        })),
+        updatedAt: serverTimestamp()
+      };
+
+      if (editingId) {
+        await updateDoc(doc(db, "examResults", editingId), payload);
+        toast.success("Updated!");
+      } else {
+        await addDoc(collection(db, "examResults"), { ...payload, createdAt: serverTimestamp() });
+        toast.success("Saved!");
+      }
+
+      setShowForm(false); setEditingId(null); loadResults();
+    } catch (e) { toast.error("Error!"); } finally { setLoading(false); }
   };
 
   return (
-    <div className="p-4 md:p-8 bg-slate-100 min-h-screen font-sans tracking-tight">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-black italic">
       <Toaster />
       {showModal && <ReportCardModal data={selectedResult} onClose={() => setShowModal(false)} />}
 
-      <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-3xl shadow-sm border">
-        <h1 className="text-2xl font-black text-slate-800 uppercase tracking-widest tracking-tighter italic">Exam Management System</h1>
-        <select value={session} onChange={(e) => setSession(e.target.value)} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold outline-none shadow-lg">
-          {sessions.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      <button onClick={() => setShowForm(true)} className="bg-blue-600 text-white px-10 py-4 rounded-2xl mb-8 shadow-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2">
-        <span>➕</span> ADD STUDENT RESULT
-      </button>
-
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-4xl p-8 rounded-[40px] shadow-2xl overflow-y-auto my-auto">
-            <h2 className="text-2xl font-black mb-6 text-indigo-600 border-b pb-4 uppercase">New Performance Entry</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 uppercase font-black text-xs text-slate-400">
-              <div><label>Select Class</label><select className="border-2 p-3 w-full rounded-2xl font-black bg-slate-50 text-slate-800 outline-none" value={cls} onChange={(e) => {setCls(e.target.value); resetForm();}}><option value="">Select...</option>{classesList.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              <div><label>Exam Type</label><select className="border-2 p-3 w-full rounded-2xl font-black bg-slate-50 text-slate-800 outline-none" value={exam} onChange={(e) => setExam(e.target.value)}><option value="">Select...</option>{examTypes.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-              <div><label>Issue Date</label><input type="date" className="border-2 p-3 w-full rounded-2xl font-black bg-slate-50 text-slate-800 outline-none" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></div>
-            </div>
-            
-            <div className="mb-6 relative">
-              <label className="uppercase font-black text-xs text-slate-400">Search Student</label>
-              <input type="text" placeholder="Type name or roll number..." className="border-2 p-4 w-full rounded-2xl font-bold bg-indigo-50/50 outline-none focus:border-indigo-600" value={studentSearch} onChange={(e) => {setStudentSearch(e.target.value); setSelectedStudentId("");}} />
-              {studentSearch && !selectedStudentId && (
-                <div className="absolute top-full w-full bg-white border-2 rounded-2xl z-10 max-h-48 overflow-y-auto shadow-2xl p-2">
-                  {filteredStudents.map(s => <div key={s.id} onClick={() => handleStudentSelect(s)} className="p-4 hover:bg-blue-600 hover:text-white cursor-pointer font-black border-b last:border-0 uppercase flex justify-between tracking-tight text-xs"><span>{s.name}</span> <span>ROLL: {s.rollNumber}</span></div>)}
-                </div>
-              )}
-            </div>
-
-            {selectedStudentId && <div className="p-5 bg-slate-800 text-white rounded-3xl mb-8 font-black flex justify-between items-center shadow-inner uppercase tracking-widest text-xs"><span>SELECTED: {name}</span> <span className="text-indigo-400">Ready for data entry ✅</span></div>}
-            
-            <div className="border-2 rounded-3xl overflow-hidden mb-6 bg-slate-50 shadow-inner">
-              <table className="w-full">
-                <thead className="bg-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                  <tr><th className="p-4 text-left">Subject Name</th><th className="p-4 text-center w-32 border-x-2 border-white">Total Max</th><th className="p-4 text-center w-32">Obtained</th></tr>
-                </thead>
-                <tbody className="divide-y-2 divide-white">
-                  {rows.map((r, i) => (
-                    <tr key={i}>
-                      <td><input className="w-full p-4 font-black uppercase bg-transparent outline-none text-slate-800" placeholder="e.g. Hindi" value={r.subject} onChange={(e) => { r.subject = e.target.value; setRows([...rows]); }} /></td>
-                      <td className="border-x-2 border-white"><input type="number" className="w-full p-4 text-center font-black bg-transparent outline-none text-slate-800" value={r.total} onChange={(e) => { r.total = e.target.value; setRows([...rows]); }} /></td>
-                      <td><input type="number" className="w-full p-4 text-center font-black text-indigo-600 bg-transparent outline-none" placeholder="00" value={r.marks} onChange={(e) => { r.marks = e.target.value; setRows([...rows]); }} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button onClick={addRow} className="text-indigo-600 font-black text-[10px] mb-8 uppercase tracking-widest border-2 border-indigo-50 px-6 py-2 rounded-xl hover:bg-indigo-50 shadow-sm transition-all">+ Add Subject Row</button>
-
-            <div className="flex gap-4">
-               <button className="flex-1 bg-slate-100 py-5 rounded-3xl font-black text-slate-400 uppercase tracking-widest shadow-sm" onClick={() => {setShowForm(false); resetForm();}}>Cancel</button>
-               <button disabled={loading} className={`flex-1 ${loading ? 'bg-slate-300' : 'bg-blue-600'} text-white py-5 rounded-3xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-95`} onClick={saveResult}>{loading ? "Saving..." : "Save Result"}</button>
-            </div>
-          </div>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-white p-6 rounded-[32px] border shadow-sm">
+          <h1 className="text-2xl font-black text-slate-800 uppercase italic">Result Dashboard</h1>
+          <button onClick={() => { setEditingId(null); setRows([{subject:"", total:"100", marks:""}]); setStudentSearch(""); setShowForm(true); }} className="bg-indigo-600 text-white px-10 py-3 rounded-xl font-black text-xs uppercase shadow-xl hover:scale-105 transition-all italic">+ Add New Result</button>
         </div>
-      )}
 
-      {/* RESULT DASHBOARD TABLE */}
-      <div className="bg-white rounded-[40px] shadow-sm border p-6 md:p-10">
-        <h2 className="text-xl font-black mb-8 text-slate-800 uppercase tracking-widest border-b-2 pb-4 flex items-center gap-2 italic">Published Marks Records</h2>
-        <div className="flex flex-col md:flex-row gap-4 mb-10 items-end">
-          <div className="flex-1 w-full"><label className="text-[10px] font-black text-slate-400 mb-1 uppercase pl-2 tracking-widest tracking-tighter">Filter Class</label>
-            <select className="border-2 p-4 w-full rounded-2xl font-bold bg-slate-50 outline-none focus:border-blue-600" value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>{classesList.map(c => <option key={c} value={c}>{c}</option>)}</select>
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 uppercase tracking-widest text-[10px]">
+          <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col">
+            <span className="text-slate-400 mb-1 ml-1 uppercase">Select Class</span>
+            <select className="bg-transparent font-black text-sm outline-none uppercase italic" value={filterClass} onChange={e => setFilterClass(e.target.value)}>{classesList.map(c => <option key={c} value={c}>{c}</option>)}</select>
           </div>
-          <div className="flex-1 w-full"><label className="text-[10px] font-black text-slate-400 mb-1 uppercase pl-2 tracking-widest tracking-tighter">Filter Exam</label>
-            <select className="border-2 p-4 w-full rounded-2xl font-bold bg-slate-50 outline-none focus:border-blue-600" value={filterExam} onChange={(e) => setFilterExam(e.target.value)}>{examTypes.map(e => <option key={e} value={e}>{e}</option>)}</select>
+          <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col">
+            <span className="text-slate-400 mb-1 ml-1 uppercase">Exam Category</span>
+            <select className="bg-transparent font-black text-sm outline-none uppercase italic" value={filterExam} onChange={e => setFilterExam(e.target.value)}>{examTypes.map(e => <option key={e} value={e}>{e}</option>)}</select>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="text-slate-400 text-[10px] font-black uppercase border-b-2 tracking-widest">
-              <tr><th className="pb-5 text-left pr-4">Student Identity</th><th className="pb-5 text-center">Exam Info</th><th className="pb-5 text-center">Grade</th><th className="pb-5 text-right pr-4 tracking-tighter">Operations</th></tr>
+        {/* List */}
+        <div className="bg-white rounded-[32px] border shadow-sm overflow-hidden">
+          <table className="w-full text-left uppercase text-xs italic">
+            <thead className="bg-slate-50 border-b">
+              <tr className="text-[10px] text-slate-400 tracking-widest uppercase">
+                <th className="px-6 py-4">Student Details</th>
+                <th className="px-6 py-4 text-center">Exam Type</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
             </thead>
-            <tbody className="divide-y-2 divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {resultList.map(r => (
-                <tr key={r.id} className="hover:bg-indigo-50/20 transition-all group font-black uppercase text-sm tracking-tighter">
-                  <td className="py-6 pr-4">
-                    <p className="text-slate-800 tracking-tight">{r.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">ROLL: {r.roll} | {r.fatherName}</p>
-                  </td>
-                  <td className="py-6 text-center">
-                    <div className="font-black text-indigo-600 text-lg">{r.percent}%</div>
-                    <p className="text-[10px] text-slate-400 tracking-widest">Score: {r.obtained}</p>
-                  </td>
-                  <td className="py-6 text-center">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black shadow-sm ${r.grade === 'Fail' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>RESULT: {r.grade}</span>
-                  </td>
-                  <td className="py-6 text-right pr-4">
-                    <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={() => { setSelectedResult(r); setShowModal(true); }} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-[10px] shadow-lg hover:bg-blue-700 uppercase tracking-widest transition-all">Show</button>
-                      <button onClick={() => handleDelete(r.id)} className="bg-red-50 text-red-500 px-6 py-2 rounded-xl text-[10px] border-2 border-red-50 hover:bg-red-100 transition-all uppercase tracking-widest">Delete</button>
+                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 flex items-center gap-3">
+                    {/* Tiny Avatar in List */}
+                    <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border">
+                        {r.photoURL ? <img src={r.photoURL} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-100" />}
                     </div>
+                    <div>
+                        <p className="font-black text-slate-800 text-sm">{r.name}</p>
+                        <p className="text-[10px] text-slate-400 tracking-widest uppercase italic">Roll: {r.roll}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center text-indigo-600">{r.exam}</td>
+                  <td className="px-6 py-4 text-right space-x-2">
+                    <button onClick={() => { 
+                      setEditingId(r.id); setSelectedStudentId(r.studentId); setStudentSearch(r.name);
+                      setCls(r.className); setExam(r.exam); setRows(r.rows); setShowForm(true);
+                    }} className="text-blue-600 border border-blue-100 px-4 py-1 rounded-lg text-[10px] font-black hover:bg-blue-50 transition-all">Edit</button>
+                    <button onClick={() => {setSelectedResult(r); setShowModal(true);}} className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[10px] font-black shadow-md active:scale-95 transition-all">View</button>
+                    <button onClick={() => {if(window.confirm('Delete kardu?')) deleteDoc(doc(db, "examResults", r.id)).then(loadResults)}} className="text-red-200 hover:text-red-500 font-black px-2 transition-colors">✕</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {resultList.length === 0 && <div className="py-32 text-center text-slate-300 font-black uppercase tracking-widest tracking-[0.3em]">No records found for this class/exam</div>}
+          {resultList.length === 0 && <div className="p-20 text-center text-slate-200 tracking-widest text-xl uppercase italic">Records Khali Hain</div>}
         </div>
       </div>
+
+      {/* FORM MODAL */}
+      {showForm && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[150] flex items-center justify-center p-2 md:p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[95vh] rounded-[40px] shadow-2xl overflow-y-auto p-6 md:p-10 italic">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl md:text-3xl font-black text-indigo-600 uppercase tracking-tighter italic">{editingId ? "Update Result Data" : "New Marksheet Entry"}</h2>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="bg-slate-100 p-2 px-5 rounded-full text-slate-400 hover:bg-slate-200 transition-all uppercase italic font-black">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 uppercase tracking-widest text-[10px]">
+              <div className="space-y-6 font-black italic">
+                <div>
+                  <label className="text-slate-400 ml-2 mb-1 block">Class Select Karo</label>
+                  <select className="w-full bg-slate-50 border-none p-4 rounded-2xl font-black text-sm outline-none focus:ring-2 ring-indigo-200 italic" value={cls} onChange={e => setCls(e.target.value)} disabled={editingId}>{classesList.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                </div>
+                <div>
+                  <label className="text-slate-400 ml-2 mb-1 block">Exam Type</label>
+                  <select className="w-full bg-slate-50 border-none p-4 rounded-2xl font-black text-sm outline-none focus:ring-2 ring-indigo-200 italic" value={exam} onChange={e => setExam(e.target.value)}>{examTypes.map(e => <option key={e} value={e}>{e}</option>)}</select>
+                </div>
+              </div>
+
+              <div className="relative font-black italic">
+                <label className="text-slate-400 ml-2 mb-1 block">Bachcha Dhundo</label>
+                <input type="text" placeholder="Student Name..." className="w-full bg-indigo-50/50 p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-indigo-400 transition-all uppercase text-sm" value={studentSearch} onChange={e => {setStudentSearch(e.target.value); if(!editingId) setSelectedStudentId("");}} disabled={editingId} />
+                {studentSearch && !selectedStudentId && !editingId && (
+                  <div className="absolute top-full left-0 w-full bg-white border-2 rounded-2xl z-20 max-h-48 overflow-y-auto shadow-2xl p-2 mt-1">
+                    {allStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).map(s => (
+                      <div key={s.id} onClick={() => { setSelectedStudentId(s.id); setName(s.name); setStudentSearch(s.name); setSelectedStudentPhoto(s.photoURL); }} className="p-4 hover:bg-indigo-600 hover:text-white cursor-pointer rounded-xl font-bold text-[11px] flex justify-between border-b last:border-0 uppercase tracking-tighter">
+                        <span>{s.name}</span> <span className="opacity-40 italic font-black uppercase">ROLL: {s.rollNumber}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedStudentId && <div className="mt-4 p-5 bg-slate-900 text-emerald-400 rounded-2xl text-[10px] flex items-center justify-between shadow-lg tracking-[0.2em] italic font-black"><span>✓ STUDENT MIL GAYA:</span> <span className="text-sm tracking-normal font-black italic">{name}</span></div>}
+              </div>
+            </div>
+
+            {/* Dynamic Subjects Table */}
+            <div className="rounded-[32px] border-4 border-slate-50 overflow-hidden bg-slate-50/20 mb-10">
+              <table className="w-full text-xs italic font-black uppercase">
+                <thead className="bg-slate-100 text-[10px] text-slate-400">
+                  <tr>
+                    <th className="p-5 text-left uppercase">Subject Name</th>
+                    <th className="p-5 text-center w-32 uppercase">Total Marks</th>
+                    <th className="p-5 text-center w-32 text-indigo-600 uppercase">Obtained</th>
+                    <th className="p-5 text-center w-12 uppercase"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white">
+                  {rows.map((r, i) => (
+                    <tr key={i} className="hover:bg-white transition-colors">
+                      <td className="p-1">
+                        <input className="w-full p-4 bg-transparent outline-none font-black text-slate-700 uppercase" placeholder="English/Hindi/Math" value={r.subject} onChange={e => handleRowChange(i, 'subject', e.target.value)} />
+                      </td>
+                      <td className="p-1 text-center">
+                        <input type="number" className="w-full p-4 bg-transparent outline-none text-center font-bold text-slate-300 font-sans" value={r.total} onChange={e => handleRowChange(i, 'total', e.target.value)} />
+                      </td>
+                      <td className="p-1 text-center">
+                        <input type="number" className="w-full p-4 bg-transparent outline-none text-center font-black text-indigo-600 text-xl font-sans" placeholder="00" value={r.marks} onChange={e => handleRowChange(i, 'marks', e.target.value)} />
+                      </td>
+                      <td className="p-1 text-center">
+                        <button onClick={() => setRows(rows.filter((_, idx) => idx !== i))} className="text-red-200 hover:text-red-500 font-black px-2">✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4 italic text-[10px] tracking-widest font-black uppercase">
+              <button onClick={() => setRows([...rows, { subject: "", total: "100", marks: "" }])} className="text-indigo-600 border-2 border-indigo-50 px-10 py-5 rounded-2xl hover:bg-indigo-50 transition-all font-black">+ Subject Add Karo</button>
+              <div className="flex-1 flex gap-3 italic">
+                <button className="flex-1 bg-slate-100 py-5 rounded-2xl hover:bg-slate-200 font-black" onClick={() => { setShowForm(false); setEditingId(null); }}>Bahar Niklo</button>
+                <button disabled={loading} className={`flex-[2] ${loading ? 'bg-slate-300 animate-pulse' : 'bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100'} text-white py-5 rounded-2xl transition-all active:scale-95 font-black tracking-widest`} onClick={saveResult}>
+                  {loading ? 'Ruko...' : editingId ? 'Update Karein' : 'Publish Karein'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

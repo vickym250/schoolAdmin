@@ -18,6 +18,8 @@ import StudentProfile from "./page/StudentProfile";
 import AbsentStudents from "./page/AbsentStudents";
 import { useSidebar } from "./component/SidebarContext";
 
+import MarksSheet from "./component/Anual";
+
 export default function App() {
 
 const { isOpen, setIsOpen } = useSidebar();
@@ -51,6 +53,8 @@ const { isOpen, setIsOpen } = useSidebar();
                   <Route path="/fees" element={<FeesReceipt />} />
                   <Route path="/idcard" element={<IDCardGenerator />} />
                   <Route path="/absentstudent" element={<AbsentStudents />} />
+                 <Route path="/marksheet/:studentId" element={<MarksSheet />} />
+
                 </Routes>
               </div>
             </div>
