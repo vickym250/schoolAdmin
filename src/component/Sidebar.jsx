@@ -38,6 +38,8 @@ const Sidebar = () => {
         { path: "/student", name: "Student Data" },
         { path: "/attendance", name: "Attendance" },
         { path: "/absentstudent", name: "Absent List" },
+        { path: "/idcard", name: "IdCard" },
+
       ]
     },
     { 
@@ -45,7 +47,7 @@ const Sidebar = () => {
       icon: <HiOutlineUserCircle />, // User icon for teachers
       subMenu: [
         { path: "/teacher", name: "Teacher Profiles" },
-        { path: "/idcard", name: "Generate ID Cards" },
+        { path: "/teacherattendace", name: "TeacherAttendace" },
       ]
     },
     { path: "/homework", name: "Homework", icon: <HiOutlineBookOpen /> },
