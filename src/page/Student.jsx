@@ -245,6 +245,7 @@ export default function StudentList() {
                           className="border border-red-500 text-red-600 px-3 py-1 rounded">
                           Delete
                         </button>
+                        
                       </td>
                     </tr>
                   );

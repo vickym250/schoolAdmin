@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "./component/Sidebar";
 import Header from "./component/Header";
 import Dashboard from "./page/Dashboard";
@@ -12,54 +12,74 @@ import TeacherAttendance from "./page/TeacherAttendance";
 import FinalResultPage from "./page/Result";
 import FeesReceipt from "./component/Fess";
 import IDCardGenerator from "./page/Idcard";
-
-// Naya Profile Page Import karein
-import StudentProfile from "./page/StudentProfile"; 
+import StudentProfile from "./page/StudentProfile";
 import AbsentStudents from "./page/AbsentStudents";
-import { useSidebar } from "./component/SidebarContext";
-
 import MarksSheet from "./component/Anual";
 
-export default function App() {
+import Login from "./page/Login";
 
-const { isOpen, setIsOpen } = useSidebar();
-  console.log(isOpen);
-  
+import { useSidebar } from "./component/SidebarContext";
+import ProtectedRoute from "./component/ProtectedRoute";
+import HelpPage from "./page/HelpLine";
+
+export default function App() {
+  const { isOpen } = useSidebar();
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- PUBLIC ROUTE: Bina Sidebar/Header ke --- */}
-        <Route path="/profile/:id" element={<StudentProfile/>} />
 
-        {/* --- ADMIN ROUTES: Sidebar aur Header ke saath --- */}
+        {/* 🔓 PUBLIC ROUTES */}
+        <Route path="/" element={<Login />} />
+        <Route path="/profile/:id" element={<StudentProfile />} />
+
+        {/* 🔐 PROTECTED ADMIN ROUTES */}
         <Route
-          path="*"
+          path="/*"
           element={
-            <div className="flex">
-              <Sidebar />
-              <div className={`${isOpen ? "ml-64" : "  ml-0  md:ml-20 "}    w-full`}>
-                <Header />
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/student" element={<StudentList />} />
-                  <Route path="/attendance" element={<Attendance />} />
-                  <Route path="/homework" element={<HomeworkPage />} />
-                  <Route path="/notice" element={<NoticePage />} />
-                  <Route path="/test" element={<TestPage />} />
-                  <Route path="/teacher" element={<TeachersManagementPage />} />
-                  <Route path="/teacherattendace" element={<TeacherAttendance />} />
-                  <Route path="/result" element={<FinalResultPage />} />
-                  <Route path="/fees" element={<FeesReceipt />} />
-                  <Route path="/idcard" element={<IDCardGenerator />} />
-                  <Route path="/absentstudent" element={<AbsentStudents />} />
-                 <Route path="/marksheet/:studentId" element={<MarksSheet />} />
+            <ProtectedRoute>
+              <div className="flex min-h-screen bg-gray-100">
+                
+                {/* Sidebar */}
+                <Sidebar />
 
-                </Routes>
+                {/* Content */}
+                <div
+                  className={`flex-1 flex flex-col transition-all duration-300 ${
+                    isOpen ? "ml-64" : "ml-0 md:ml-20"
+                  }`}
+                >
+                  <Header />
+
+                  <main className="p-4 md:p-6 flex-grow">
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/dash" element={<Dashboard />} />
+
+                      <Route path="/student" element={<StudentList />} />
+                      <Route path="/attendance" element={<Attendance />} />
+                      <Route path="/homework" element={<HomeworkPage />} />
+                      <Route path="/notice" element={<NoticePage />} />
+                      <Route path="/test" element={<TestPage />} />
+                      <Route path="/teacher" element={<TeachersManagementPage />} />
+                      <Route path="/teacherattendace" element={<TeacherAttendance />} />
+                      <Route path="/result" element={<FinalResultPage />} />
+                      <Route path="/fees" element={<FeesReceipt />} />
+                      <Route path="/idcard" element={<IDCardGenerator />} />
+                      <Route path="/absentstudent" element={<AbsentStudents />} />
+                      <Route path="/marksheet/:studentId" element={<MarksSheet />} />
+                      <Route path="/help" element={< HelpPage/>} />
+
+                      {/* ❌ Wrong URL → Dashboard */}
+                      <Route path="*" element={<Navigate to="/dash" replace />} />
+                    </Routes>
+                  </main>
+                </div>
               </div>
-            </div>
+            </ProtectedRoute>
           }
         />
+
       </Routes>
     </BrowserRouter>
   );

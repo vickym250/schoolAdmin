@@ -1,63 +1,139 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useSidebar } from "./SidebarContext";
-import { FaHome, FaUsers, FaBook, FaBell, FaClipboardList, FaUserTie, FaTimes } from "react-icons/fa";
+// Naye aur behtar icons
+import { 
+  HiOutlineViewGrid, 
+  HiOutlineUserGroup, 
+  HiOutlineUserCircle,
+  HiOutlineBookOpen,
+  HiOutlineSpeakerphone,
+  HiOutlineClipboardCheck,
+  HiOutlineIdentification,
+  HiOutlineQuestionMarkCircle,
+  HiChevronDown,
+  HiOutlineAcademicCap,
+  HiOutlineBadgeCheck
+} from "react-icons/hi"; 
 
 const Sidebar = () => {
   const { isOpen, setIsOpen } = useSidebar();
+  const [openSubMenu, setOpenSubMenu] = useState(null);
+
+  const toggleSubMenu = (menuName) => {
+    if (openSubMenu === menuName) {
+      setOpenSubMenu(null);
+    } else {
+      setOpenSubMenu(menuName);
+      if (!isOpen) setIsOpen(true);
+    }
+  };
 
   const menuItems = [
-    { path: "/", name: "Dashboard", icon: <FaHome /> },
-    { path: "/student", name: "Students", icon: <FaUsers /> },
-    { path: "/attendance", name: "Attendance", icon: <FaClipboardList /> },
-    { path: "/absentstudent", name: "Absent Student", icon: <FaClipboardList /> },
-    { path: "/homework", name: "Homework", icon: <FaBook /> },
-    { path: "/notice", name: "Notices", icon: <FaBell /> },
-    { path: "/result", name: "Result", icon: <FaBell /> },
-    { path: "/teacher", name: "Teachers", icon: <FaUserTie /> },
-    { path: "/idcard", name: "Idcard", icon: <FaUserTie /> },
+    { path: "/dash", name: "Dashboard", icon: <HiOutlineViewGrid /> },
+    { 
+      name: "Students", 
+      icon: <HiOutlineUserGroup />, // Group icon for students
+      subMenu: [
+        { path: "/student", name: "Student Data" },
+        { path: "/attendance", name: "Attendance" },
+        { path: "/absentstudent", name: "Absent List" },
+      ]
+    },
+    { 
+      name: "Teachers", 
+      icon: <HiOutlineUserCircle />, // User icon for teachers
+      subMenu: [
+        { path: "/teacher", name: "Teacher Profiles" },
+        { path: "/idcard", name: "Generate ID Cards" },
+      ]
+    },
+    { path: "/homework", name: "Homework", icon: <HiOutlineBookOpen /> },
+    { path: "/notice", name: "Notices", icon: <HiOutlineSpeakerphone /> },
+    { path: "/result", name: "Exam Results", icon: <HiOutlineBadgeCheck /> },
+    { path: "/help", name: "Support Help", icon: <HiOutlineQuestionMarkCircle /> },
   ];
 
   return (
     <>
       {/* Overlay for Mobile */}
       {isOpen && (
-        <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/50 z-40 md:hidden" />
+        <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" />
       )}
 
       {/* Sidebar */}
       <div className={`
-         absolute top-0 left-0 h-screen bg-gray-900 text-white z-50 
-        transition-all duration-300 border-r border-gray-700
-        ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full md:w-20 md:translate-x-0"}
-        overflow-hidden
+          fixed top-0 left-0 h-screen bg-[#0f172a] text-slate-300 z-50 
+          transition-all duration-300 border-r border-slate-800
+          ${isOpen ? "w-64" : "w-0 -translate-x-full md:w-20 md:translate-x-0"}
+          overflow-y-auto scrollbar-hide
       `}>
-        {/* Header inside Sidebar (Optional) */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-700">
-          <h1 className={`font-bold transition-opacity ${isOpen ? "opacity-100" : "opacity-0 md:hidden"}`}>
-            Admin Panel
-          </h1>
-          <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-300">
-            <FaTimes size={20} />
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-800 h-16 bg-[#1e293b]/50">
+          <div className={`flex items-center gap-3 transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0 hidden"}`}>
+            <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+              <HiOutlineAcademicCap size={22} />
+            </div>
+            <span className="font-bold text-white tracking-wide text-lg">EduAdmin</span>
+          </div>
+          <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+            <HiOutlineViewGrid size={24} />
           </button>
         </div>
 
         {/* Menu Items */}
-        <ul className="p-4 space-y-3">
-          {menuItems.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                onClick={() => setIsOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-4 p-3 rounded-lg transition-all 
-                  ${isActive ? "bg-blue-600 shadow-lg" : "hover:bg-gray-700 text-gray-300"}`
-                }
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className={`whitespace-nowrap ${!isOpen && "md:hidden"}`}>
-                  {item.name}
-                </span>
-              </NavLink>
+        <ul className="p-4 space-y-2">
+          {menuItems.map((item, index) => (
+            <li key={index}>
+              {item.subMenu ? (
+                <div>
+                  <button
+                    onClick={() => toggleSubMenu(item.name)}
+                    className={`flex items-center justify-between w-full p-3 rounded-xl transition-all duration-200 
+                    ${openSubMenu === item.name ? "bg-slate-800 text-white" : "hover:bg-slate-800/50 hover:text-white"}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl">{item.icon}</span>
+                      <span className={`font-medium transition-all ${!isOpen && "hidden"}`}>{item.name}</span>
+                    </div>
+                    {isOpen && (
+                      <HiChevronDown className={`transition-transform duration-300 ${openSubMenu === item.name ? "rotate-180" : ""}`} />
+                    )}
+                  </button>
+
+                  {/* Sub-menu styling */}
+                  <div className={`overflow-hidden transition-all duration-300 ${openSubMenu === item.name && isOpen ? "max-h-48 mt-2" : "max-h-0"}`}>
+                    <ul className="pl-12 space-y-1 relative before:absolute before:left-6 before:top-0 before:h-full before:w-[1px] before:bg-slate-700">
+                      {item.subMenu.map((sub) => (
+                        <li key={sub.path}>
+                          <NavLink
+                            to={sub.path}
+                            onClick={() => window.innerWidth < 768 && setIsOpen(false)}
+                            className={({ isActive }) =>
+                              `relative block p-2 text-[13px] rounded-lg transition-all 
+                              ${isActive ? "text-blue-400 font-bold" : "text-slate-400 hover:text-slate-100"}`
+                            }
+                          >
+                            {sub.name}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <NavLink
+                  to={item.path}
+                  onClick={() => window.innerWidth < 768 && setIsOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-4 p-3 rounded-xl transition-all duration-200
+                    ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" : "hover:bg-slate-800/50 hover:text-white"}`
+                  }
+                >
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className={`font-medium ${!isOpen && "hidden"}`}>{item.name}</span>
+                </NavLink>
+              )}
             </li>
           ))}
         </ul>
