@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useParams } from "react-router-dom";
 
 export default function IDCardGenerator() {
+  const { studentId } = useParams();
   const [className, setClassName] = useState("Class 1");
   const [students, setStudents] = useState([]);
 
@@ -17,9 +19,17 @@ export default function IDCardGenerator() {
     return () => unsub();
   }, []);
 
-  const filteredStudents = students.filter(
-    (s) => s.className?.toLowerCase() === className.toLowerCase()
-  );
+const filteredStudents = studentId
+  ? students.filter((s) => s.id === studentId) // 👈 SINGLE STUDENT
+  : students.filter(
+      (s) => s.className?.toLowerCase() === className.toLowerCase()
+    ); // 👈 ALL CLASS
+
+
+
+
+
+
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
@@ -114,8 +124,21 @@ export default function IDCardGenerator() {
     <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif", background: "#f5f5f5", minHeight: "100vh" }}>
       <h1 style={{ color: "#1e3a8a" }}>Student ID Card Generator</h1>
       
+ 
+
+
+
+
+
+
       <div style={{ background: "#fff", padding: "30px", borderRadius: "10px", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", display: "inline-block" }}>
-        <p style={{ fontWeight: "bold" }}>Step 1: Select Class</p>
+
+        {studentId  ? 
+
+  ""
+  :
+  <div>
+    <p style={{ fontWeight: "bold" }}>Step 1: Select Class</p>
         <select 
           value={className} 
           onChange={(e) => setClassName(e.target.value)}
@@ -125,6 +148,11 @@ export default function IDCardGenerator() {
             <option key={i} value={`Class ${i + 1}`}>Class {i + 1}</option>
           ))}
         </select>
+</div>
+
+ }
+
+
 
         <div style={{ marginTop: "10px" }}>
           <button 

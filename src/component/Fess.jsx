@@ -14,8 +14,21 @@ export default function FeesReceipt({
       ? new Date(paidAt.seconds * 1000).toLocaleDateString("en-GB")
       : new Date().toLocaleDateString("en-GB");
 
-  const total = Number(admissionFee) + Number(monthlyFee);
 
+
+ const monthCount = Array.isArray(payMonth)
+  ? payMonth.length
+  : typeof payMonth === "string" && payMonth
+  ? payMonth.split(",").length
+  : 0;
+const monthlyTotal = Number(monthlyFee || 0) * monthCount;
+
+const total = Number(admissionFee || 0) + monthlyTotal;
+
+
+
+
+  
   return (
     <>
       <style>
@@ -85,7 +98,7 @@ export default function FeesReceipt({
           {/* HEADER */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-extrabold">FEES RECEIPT</h1>
-            <p className="font-semibold">AL MUDASSIR PUBLIC HIGH SCHOOL</p>
+            <p className="font-semibold">Bright PUBLIC HIGH SCHOOL</p>
             <p className="text-sm text-gray-600">
               Siddharth Nagar, Uttar Pradesh
             </p>
@@ -112,19 +125,26 @@ export default function FeesReceipt({
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="border p-2">Admission Fee</td>
-                <td className="border p-2 text-right">{admissionFee}</td>
-              </tr>
-              <tr>
-                <td className="border p-2">Monthly Fee</td>
-                <td className="border p-2 text-right">{monthlyFee}</td>
-              </tr>
-              <tr className="font-bold bg-gray-100">
-                <td className="border p-2">Total Paid</td>
-                <td className="border p-2 text-right">{total}</td>
-              </tr>
-            </tbody>
+  <tr>
+    <td className="border p-2">Admission Fee</td>
+    <td className="border p-2 text-right">{admissionFee}</td>
+  </tr>
+
+  <tr>
+    <td className="border p-2">
+      Monthly Fee ({monthCount} Month{monthCount > 1 ? "s" : ""})
+    </td>
+    <td className="border p-2 text-right">
+      {monthlyFee} × {monthCount} = {monthlyTotal}
+    </td>
+  </tr>
+
+  <tr className="font-bold bg-gray-100">
+    <td className="border p-2">Total Paid</td>
+    <td className="border p-2 text-right">{total}</td>
+  </tr>
+</tbody>
+
           </table>
 
           {/* SIGN */}

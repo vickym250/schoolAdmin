@@ -52,7 +52,7 @@ export default function Dashboard() {
 
   return (
     /* md:ml-20 (Laptop icon-sidebar ke liye) lg:ml-64 (Bade sidebar ke liye) */
-    <div className="container bg-gray-50 p-4 md:p-6 lg:p-8  transition-all duration-300">
+    <div className="container mx-auto bg-gray-50 p-4 md:p-6 lg:p-8  transition-all duration-300">
       
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 mt-10 md:mt-0">

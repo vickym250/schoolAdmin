@@ -21,6 +21,8 @@ import Login from "./page/Login";
 import { useSidebar } from "./component/SidebarContext";
 import ProtectedRoute from "./component/ProtectedRoute";
 import HelpPage from "./page/HelpLine";
+import SchoolStatusGuard from "./component/SchoolStatusGuard";
+import AllReport from "./component/AllReport";
 
 export default function App() {
   const { isOpen } = useSidebar();
@@ -37,6 +39,7 @@ export default function App() {
         <Route
           path="/*"
           element={
+            <SchoolStatusGuard>
             <ProtectedRoute>
               <div className="flex min-h-screen bg-gray-100">
                 
@@ -53,7 +56,7 @@ export default function App() {
 
                   <main className="p-4 md:p-6 flex-grow">
                     <Routes>
-                      <Route path="/" element={<Dashboard />} />
+                      
                       <Route path="/dash" element={<Dashboard />} />
 
                       <Route path="/student" element={<StudentList />} />
@@ -65,10 +68,11 @@ export default function App() {
                       <Route path="/teacherattendace" element={<TeacherAttendance />} />
                       <Route path="/result" element={<FinalResultPage />} />
                       <Route path="/fees" element={<FeesReceipt />} />
-                      <Route path="/idcard" element={<IDCardGenerator />} />
+                      <Route path="/idcard/:studentId?" element={<IDCardGenerator />} />
                       <Route path="/absentstudent" element={<AbsentStudents />} />
                       <Route path="/marksheet/:studentId" element={<MarksSheet />} />
                       <Route path="/help" element={< HelpPage/>} />
+                    <Route path="/all-report/:className" element={<AllReport />} />
 
                       {/* ❌ Wrong URL → Dashboard */}
                       <Route path="*" element={<Navigate to="/dash" replace />} />
@@ -77,6 +81,7 @@ export default function App() {
                 </div>
               </div>
             </ProtectedRoute>
+            </SchoolStatusGuard>
           }
         />
 

@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import FeesReceipt from "./Fess";
+import { updateTotalStudents } from "./updateTotalStudents";
 
 export default function AddStudent({ close, editData }) {
   /* ---------------- MONTHS ---------------- */
@@ -51,27 +52,29 @@ export default function AddStudent({ close, editData }) {
   const [fatherSearch, setFatherSearch] = useState("");
 
   /* ---------------- SESSION + TIME ---------------- */
-  useEffect(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
+useEffect(() => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 1 = Jan ... 12 = Dec
 
-    const session =
-      month >= 4
-        ? `${year}-${String(year + 1).slice(-2)}`
-        : `${year - 1}-${String(year).slice(-2)}`;
+  // 🔥 Academic Session: April to March
+  const session =
+    month >= 4
+      ? `${year}-${String(year + 1).slice(-2)}`
+      : `${year - 1}-${String(year).slice(-2)}`;
 
-    const time = now.toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const time = now.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-    setForm(prev => ({
-      ...prev,
-      session,
-      admissionTime: time,
-    }));
-  }, []);
+  setForm(prev => ({
+    ...prev,
+    session,
+    admissionTime: time,
+  }));
+}, []);
+
 
   /* ---------------- LOAD PARENTS ---------------- */
   useEffect(() => {
@@ -189,10 +192,11 @@ export default function AddStudent({ close, editData }) {
       const { photo, userId, password, ...safeForm } = form;
       const parentId = await getOrCreateParent(form.fatherName, form.phone, addNewFather ? userId : "", addNewFather ? password : "");
       const studentDoc = await addDoc(collection(db, "students"), {
-        ...safeForm, admissionFees: Number(form.admissionFees), totalFees: Number(form.totalFees), photoURL, parentId, attendance: generateAttendance(), fees: paidAmount ? generateFeesWithPayment() : generateFees(), createdAt: serverTimestamp(),
+        ...safeForm, admissionFees: Number(form.admissionFees), totalFees: Number(form.totalFees), photoURL, parentId, attendance: generateAttendance(), fees: paidAmount ? generateFeesWithPayment() : generateFees(), createdAt: serverTimestamp(),deletedAt: null, 
       });
       await updateDoc(doc(db, "parents", parentId), { students: arrayUnion(studentDoc.id) });
       alert("Student Added Successfully!");
+       await updateTotalStudents();
       setFess(true);
     } catch (err) {
       console.error(err);

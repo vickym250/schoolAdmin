@@ -27,8 +27,10 @@ export default function Header() {
   };
 
   return (
-    <div className="w-full bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-40 border-b border-gray-100">
+    <div className="w-full bg-white shadow-sm p-4 sticky top-0 z-40 border-b border-gray-100">
       {/* Left Side: Toggle & Title */}
+      <div className="container flex justify-between items-center ">
+
       <div className="flex items-center gap-4">
         <button 
           onClick={toggleSidebar} 
@@ -51,6 +53,8 @@ export default function Header() {
         <FaSignOutAlt />
         <span className="hidden sm:inline">Logout</span>
       </button>
+      </div>
+
     </div>
   );
 }

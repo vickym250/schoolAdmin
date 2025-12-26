@@ -80,7 +80,7 @@ export default function SalaryReceipt({
                 SALARY RECEIPT
               </h1>
               <p className="font-semibold mt-1">
-                AL MUDASSIR PUBLIC HIGH SCHOOL
+                Bright Future School 
               </p>
               <p className="text-sm text-gray-600">
                 Siddharth Nagar, Uttar Pradesh

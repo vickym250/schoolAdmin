@@ -12,9 +12,11 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
-
+import { useNavigate } from "react-router-dom";
+import { updateTotalStudents } from "../component/updateTotalStudents";
 export default function StudentList() {
   /* =================== BASIC =================== */
+  let navigator = useNavigate()
   const sessions = ["2024-25", "2025-26", "2026-27"];
   const [session, setSession] = useState("2025-26");
 
@@ -107,7 +109,7 @@ export default function StudentList() {
   };
 
   /* =================== DELETE =================== */
-  const handleDelete = (id) => {
+  const handleDelete = async(id) => {
     toast((t) => (
       <div>
         <p className="font-semibold text-red-600">Delete this student?</p>
@@ -120,6 +122,7 @@ export default function StudentList() {
               });
               toast.dismiss(t.id);
               toast.success("Student Archived");
+              await updateTotalStudents();
             }}
           >
             Yes
@@ -133,11 +136,12 @@ export default function StudentList() {
         </div>
       </div>
     ));
+     
   };
 
   /* =================== UI =================== */
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
+    <div className="p-6 bg-gray-100  container">
       <div className={`bg-white p-6 rounded-xl shadow ${open ? "blur-sm" : ""}`}>
         <h2 className="text-2xl font-bold mb-4">
           Student List ({session})
@@ -244,6 +248,11 @@ export default function StudentList() {
                           onClick={() => handleDelete(s.id)}
                           className="border border-red-500 text-red-600 px-3 py-1 rounded">
                           Delete
+                        </button>
+                        <button
+                          onClick={() => navigator(`/idcard/${s.id}`)}
+                          className="border border-red-500 text-blue-600 px-3 py-1 rounded">
+                          IdCard
                         </button>
                         
                       </td>

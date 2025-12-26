@@ -5,8 +5,6 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 export default function AbsentStudents() {
   const sessions = ["2024-25", "2025-26", "2026-27"];
   const [session, setSession] = useState("2025-26");
-  
-  // 🟢 "All" ko default state banaya
   const [className, setClassName] = useState("All"); 
   const [students, setStudents] = useState([]);
   
@@ -18,9 +16,7 @@ export default function AbsentStudents() {
   const today = new Date();
   const currentDay = today.getDate();
   const currentMonth = months[today.getMonth()];
-  const todayKey = `${session}_${currentMonth}_day_${currentDay}`;
 
-  /* 🔥 FETCH STUDENTS */
   useEffect(() => {
     const q = query(collection(db, "students"), orderBy("name", "asc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -32,14 +28,16 @@ export default function AbsentStudents() {
     return () => unsub();
   }, []);
 
-  /* 🔍 FILTER ABSENT STUDENTS (All Classes Logic) */
+  /* 🔍 FILTER LOGIC */
   const absentList = students.filter((s) => {
-    // Agar "All" select hai toh class skip karo, warna match karo
-    const matchesClass = className === "All" ? true : s.className === className;
-    const isAbsentToday = s.attendance?.[todayKey] === "A";
     const matchesSession = s.session === session;
+    const matchesClass = className === "All" ? true : s.className === className;
+    
+    // Database check: attendance -> Month -> Month_day_X
+    const dayKey = `${currentMonth}_day_${currentDay}`;
+    const isAbsentToday = s.attendance?.[currentMonth]?.[dayKey] === "A";
 
-    return matchesClass && isAbsentToday && matchesSession;
+    return matchesClass && matchesSession && isAbsentToday;
   });
 
   return (

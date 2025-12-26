@@ -4,6 +4,10 @@ import {
   collection, addDoc, getDocs, query, where, serverTimestamp,
   doc, deleteDoc, updateDoc 
 } from "firebase/firestore";
+
+
+
+
 import toast, { Toaster } from "react-hot-toast";
 
 /* ==========================================
@@ -22,6 +26,7 @@ const ReportCardModal = ({ data, onClose }) => {
   if (!data) return null;
 
   const { exam, rows, studentId , id } = data;
+
 
 
   // 🔥 AUTO NAVIGATE ONLY FOR ANNUAL
@@ -279,6 +284,19 @@ export default function FinalResultPage() {
 
   const classesList = Array.from({length: 12}, (_, i) => `Class ${i+1}`);
   const examTypes = ["Quarterly", "Half-Yearly", "Annual"];
+  const navigate =useNavigate()
+ const subjectMaster = {
+  "Class 1": ["Hindi", "English", "Math"],
+  "Class 2": ["Hindi", "English", "Math", "EVS"],
+  "Class 3": ["Hindi", "English", "Math", "EVS"],
+  "Class 4": ["Hindi", "English", "Math", "Science", "GK"],
+  "Class 5": ["Hindi", "English", "Math", "Science", "Social"],
+  "Class 6": ["Hindi", "English", "Math", "Science", "Social", "Computer"],
+  "Class 7": ["Hindi", "English", "Math", "Science", "Social", "Computer"],
+  "Class 8": ["Hindi", "English", "Math", "Science", "Social", "Computer"],
+  "Class 9": ["Hindi", "English", "Math", "Science", "Social"],
+  "Class 10": ["Hindi", "English", "Math", "Science", "Social"],
+};
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -286,7 +304,18 @@ export default function FinalResultPage() {
       const snap = await getDocs(q);
       setAllStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     };
+
     fetchStudents();
+
+ if (!editingId && subjectMaster[cls]) {
+    const autoSubjects = subjectMaster[cls].map(sub => ({
+      subject: sub,
+      total: "100",
+      marks: ""
+    }));
+    setRows(autoSubjects);
+  }
+
   }, [cls]);
 
   const loadResults = async () => {
@@ -305,40 +334,99 @@ export default function FinalResultPage() {
     setRows(newRows);
   };
 
-  const saveResult = async () => {
-    if (!selectedStudentId || !exam) return toast.error("Bhai, details bharo!");
-    setLoading(true);
-    try {
-      const student = allStudents.find(s => s.id === selectedStudentId);
-      
-      const payload = {
-        session,
-        studentId: selectedStudentId,
-        name: student.name,
-        className: cls,
-        roll: student?.rollNumber || "",
-        fatherName: student?.fatherName || "",
-        photoURL: student?.photoURL || "", // Saving Photo URL from student profile
-        exam,
-        rows: rows.map(r => ({
-          subject: r.subject.trim(),
-          total: Number(r.total),
-          marks: Number(r.marks)
-        })),
-        updatedAt: serverTimestamp()
-      };
+ const saveResult = async () => {
+  if (!selectedStudentId || !exam)
+    return toast.error("Bhai, student aur exam select karo!");
 
-      if (editingId) {
-        await updateDoc(doc(db, "examResults", editingId), payload);
-        toast.success("Updated!");
-      } else {
-        await addDoc(collection(db, "examResults"), { ...payload, createdAt: serverTimestamp() });
-        toast.success("Saved!");
-      }
+  const student = allStudents.find(s => s.id === selectedStudentId);
+  if (!student) return toast.error("Student nahi mila!");
 
-      setShowForm(false); setEditingId(null); loadResults();
-    } catch (e) { toast.error("Error!"); } finally { setLoading(false); }
-  };
+  // 🔹 Clean rows
+  const cleanRows = rows
+    .filter(r => r.subject && r.total !== "" && r.marks !== "")
+    .map(r => ({
+      subject: r.subject.trim(),
+      total: Number(r.total) || 0,
+      marks: Number(r.marks) || 0
+    }));
+
+  if (cleanRows.length === 0)
+    return toast.error("Kam se kam ek subject bharo!");
+
+  setLoading(true);
+
+  try {
+    const payload = {
+      session,
+      studentId: student.id,
+      name: student.name || "",
+      className: cls || student.className || "",
+      roll: student.rollNumber || "",
+      fatherName: student.fatherName || "",
+      photoURL: student.photoURL || "",
+      exam,
+      rows: cleanRows,
+      updatedAt: serverTimestamp()
+    };
+
+    if (editingId) {
+      await updateDoc(doc(db, "examResults", editingId), payload);
+      toast.success("Result Updated Successfully!");
+    } else {
+      await addDoc(collection(db, "examResults"), {
+        ...payload,
+        createdAt: serverTimestamp()
+      });
+      toast.success("Result Saved Successfully!");
+    }
+
+    setShowForm(false);
+    setEditingId(null);
+    loadResults();
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Save karte time error aaya!");
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handlePrintAll = async () => {
+  if (resultList.length === 0) {
+    toast.error("Koi result nahi mila!");
+    return;
+  }
+
+  // 🔥 AGAR EXAM ANNUAL NAHI HAI → ALL REPORT PAGE
+  if (filterExam !== "Annual") {
+     for (let r of resultList) {
+    if (r.className) {
+      window.open(
+        `/all-report/${r.className.replace(/\s+/g, "")}`
+      );
+
+      // 🔹 thoda delay taaki browser crash na ho
+      await new Promise(res => setTimeout(res, 800));
+    }
+  }
+  }
+
+  // 🔥 SIRF ANNUAL KE LIYE PURANA LOGIC
+  toast.success("Print All Annual Started...");
+
+  for (let r of resultList) {
+    if (r.className) {
+      window.open(
+        `/marksheet/${r.className.replace(/\s+/g, "")}`
+      );
+
+      // 🔹 thoda delay taaki browser crash na ho
+      await new Promise(res => setTimeout(res, 800));
+    }
+  }
+};
+
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-black italic">
@@ -401,8 +489,28 @@ export default function FinalResultPage() {
           </table>
           {resultList.length === 0 && <div className="p-20 text-center text-slate-200 tracking-widest text-xl uppercase italic">Records Khali Hain</div>}
         </div>
-      </div>
+<div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 bg-white p-6 rounded-[32px] border shadow-sm">
+  <h1 className="text-2xl font-black text-slate-800 uppercase italic">
+   Print All
+  </h1>
 
+  <div className="flex gap-3">
+    {/* 🔹 NEW PRINT ALL BUTTON */}
+    <button
+      onClick={handlePrintAll}
+      className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-black text-xs uppercase shadow-xl hover:scale-105 transition-all italic"
+    >
+      🖨 PRINT ALL
+    </button>
+
+    {/* EXISTING BUTTON */}
+    
+  </div>
+</div>
+
+
+      </div>
+  
       {/* FORM MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[150] flex items-center justify-center p-2 md:p-4">
@@ -428,7 +536,7 @@ export default function FinalResultPage() {
                 <label className="text-slate-400 ml-2 mb-1 block">Bachcha Dhundo</label>
                 <input type="text" placeholder="Student Name..." className="w-full bg-indigo-50/50 p-4 rounded-2xl font-black outline-none border-2 border-transparent focus:border-indigo-400 transition-all uppercase text-sm" value={studentSearch} onChange={e => {setStudentSearch(e.target.value); if(!editingId) setSelectedStudentId("");}} disabled={editingId} />
                 {studentSearch && !selectedStudentId && !editingId && (
-                  <div className="absolute top-full left-0 w-full bg-white border-2 rounded-2xl z-20 max-h-48 overflow-y-auto shadow-2xl p-2 mt-1">
+                  <div className="absolute top-20 left-0 w-full bg-white border-2 rounded-2xl z-20 max-h-48 overflow-y-auto shadow-2xl p-2 mt-1">
                     {allStudents.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).map(s => (
                       <div key={s.id} onClick={() => { setSelectedStudentId(s.id); setName(s.name); setStudentSearch(s.name); setSelectedStudentPhoto(s.photoURL); }} className="p-4 hover:bg-indigo-600 hover:text-white cursor-pointer rounded-xl font-bold text-[11px] flex justify-between border-b last:border-0 uppercase tracking-tighter">
                         <span>{s.name}</span> <span className="opacity-40 italic font-black uppercase">ROLL: {s.rollNumber}</span>

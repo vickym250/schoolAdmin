@@ -28,7 +28,7 @@ export default function Attendance() {
   const [month, setMonth] = useState(currentMonthName);
   const [className, setClassName] = useState("Class 10");
   const [students, setStudents] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // 🔍 Search State
 
   /* ---------------- LOAD STUDENTS ---------------- */
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function Attendance() {
     return () => unsub();
   }, []);
 
-  /* ---------------- INIT ATTENDANCE (SAFE) ---------------- */
+  /* ---------------- INIT ATTENDANCE ---------------- */
   useEffect(() => {
     students.forEach(async (student) => {
       if (student.attendance === undefined) {
@@ -72,7 +72,6 @@ export default function Attendance() {
     const monthData = student.attendance?.[month] || {};
     const prevStatus = monthData[dayKey];
 
-    // SAME STATUS → DO NOTHING
     if (prevStatus === status) return;
 
     const selectedMonthOrder = months.indexOf(month);
@@ -91,11 +90,9 @@ export default function Attendance() {
     let present = monthData.present || 0;
     let absent = monthData.absent || 0;
 
-    // remove previous
     if (prevStatus === "P") present--;
     if (prevStatus === "A") absent--;
 
-    // add new
     if (status === "P") present++;
     if (status === "A") absent++;
 
@@ -105,148 +102,159 @@ export default function Attendance() {
         [`attendance.${month}.present`]: present,
         [`attendance.${month}.absent`]: absent,
       });
-
       toast.success(`${student.name} marked ${status}`);
     } catch (e) {
       toast.error("Update failed");
     }
   };
 
-  /* ---------------- FILTER ---------------- */
+  /* ---------------- FILTER LOGIC ---------------- */
   const filteredData = students.filter((s) => {
-    if (s.className !== className) return false;
-    if (s.session !== session) return false;
-    if (
-      searchTerm &&
-      !s.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) return false;
-    return true;
+    // 1. Class filter
+    const matchClass = s.className === className;
+    // 2. Session filter
+    const matchSession = s.session === session;
+    // 3. Name Search filter (Case Insensitive)
+    const matchSearch = s.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchClass && matchSession && matchSearch;
   });
 
-  /* ---------------- UI ---------------- */
-  return (
-    <div className="p-2 md:p-6 bg-gray-50 container">
+return (
+  <div className="min-h-screen bg-gray-50 px-2 py-4 sm:px-6 md:py-8 font-sans">
+    <div className="container mx-auto">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <h2 className="text-xl md:text-2xl font-extrabold text-gray-800 tracking-tight">
+          Attendance Dashboard <span className="text-blue-600 block sm:inline">({session})</span>
+        </h2>
+        <p className="text-xs font-medium text-gray-500 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 self-start md:self-center">
+          📅 {month}, {session}
+        </p>
+      </div>
 
-      <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800 text-center md:text-left">
-        Attendance Dashboard <span className="text-blue-600">({session})</span>
-      </h2>
-
-      {/* FILTERS */}
-      <div className="grid grid-cols-2 md:flex gap-3 mb-6 bg-white p-4 rounded-xl shadow-sm border">
-        <select value={session} onChange={(e) => setSession(e.target.value)} className="border p-2 rounded">
+      {/* FILTERS & SEARCH */}
+      <div className="grid grid-cols-2 lg:flex lg:flex-nowrap gap-3 mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <select value={session} onChange={(e) => setSession(e.target.value)}
+          className="border border-gray-300 p-2.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
           {sessions.map(s => <option key={s}>{s}</option>)}
         </select>
 
-        <select value={month} onChange={(e) => setMonth(e.target.value)} className="border p-2 rounded">
+        <select value={month} onChange={(e) => setMonth(e.target.value)}
+          className="border border-gray-300 p-2.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
           {months.map(m => <option key={m}>{m}</option>)}
         </select>
 
-        <select value={className} onChange={(e) => setClassName(e.target.value)} className="border p-2 rounded">
+        <select value={className} onChange={(e) => setClassName(e.target.value)}
+          className="border border-gray-300 p-2.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
           {Array.from({ length: 12 }, (_, i) => (
             <option key={i}>Class {i + 1}</option>
           ))}
         </select>
 
-        <input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search student..."
-          className="border p-2 rounded col-span-2 md:col-span-1"
-        />
+        {/* 🔍 Active Search Input */}
+        <div className="border border-gray-300 p-2.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search student by name..."
+            className="border border-gray-300 p-2.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+          />
+        </div>
       </div>
 
-      {/* TABLE */}
-      <div className="overflow-x-auto bg-white border rounded-xl shadow">
-        <table className="min-w-[800px] w-full border-collapse">
-          <thead>
-            <tr className="bg-slate-800 text-white">
-              <th className="sticky left-0 bg-slate-800 p-3 text-left w-48">
-                Student
-              </th>
-              {[...Array(getDaysInMonth())].map((_, i) => (
-                <th
-                  key={i}
-                  className={`p-2 text-xs ${
-                    i + 1 === currentDay && month === currentMonthName
-                      ? "bg-orange-500"
-                      : ""
-                  }`}
-                >
-                  {i + 1}
+      {/* MOBILE SWIPE HINT */}
+      <div className="flex items-center gap-2 mb-3 text-[11px] font-medium text-blue-500 md:hidden animate-pulse">
+        <span>⬅️ Swipe left/right for dates</span>
+      </div>
+
+      {/* TABLE CONTAINER */}
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh] relative">
+          <table className="w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+              <tr className="bg-slate-800 text-white">
+                <th className="sticky left-0 z-30 bg-slate-800 p-4 text-left w-[140px] sm:w-[200px] shadow-[2px_0_5px_rgba(0,0,0,0.1)] border-b border-slate-700">
+                  Student Name
                 </th>
-              ))}
-            </tr>
-          </thead>
+                {[...Array(getDaysInMonth())].map((_, i) => (
+                  <th key={i}
+                    className={`p-2 text-center text-[10px] sm:text-xs font-bold border-b border-slate-700 w-[45px] sm:w-[55px]
+                    ${i + 1 === currentDay && month === currentMonthName ? "bg-orange-500" : ""}`}>
+                    {i + 1}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-          <tbody>
-            {filteredData.map(student => {
-              const monthData = student.attendance?.[month] || {};
-              return (
-                <tr key={student.id} className="border-b hover:bg-blue-50">
-                  <td className="sticky left-0 bg-white p-3">
-                    <div className="font-bold text-sm">{student.name}</div>
-                    <div className="text-xs text-gray-400">
-                      Roll: {student.rollNumber}
-                    </div>
-                  </td>
+            <tbody className="divide-y divide-gray-100">
+              {filteredData.map(student => {
+                const monthData = student.attendance?.[month] || {};
+                return (
+                  <tr key={student.id} className="group hover:bg-blue-50/50 transition-colors">
+                    <td className="sticky left-0 z-20 bg-white group-hover:bg-blue-50 p-3 sm:p-4 border-r border-gray-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)] transition-colors">
+                      <div className="font-bold text-xs sm:text-sm text-gray-800 truncate">
+                        {student.name}
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-medium">
+                        Roll: {student.rollNumber}
+                      </div>
+                    </td>
 
-                  {[...Array(getDaysInMonth())].map((_, i) => {
-                    const day = i + 1;
-                    const status = monthData[`${month}_day_${day}`];
+                    {[...Array(getDaysInMonth())].map((_, i) => {
+                      const day = i + 1;
+                      const status = monthData[`${month}_day_${day}`];
+                      const selectedMonthOrder = months.indexOf(month);
+                      const currentMonthOrder = months.indexOf(currentMonthName);
 
-                    const selectedMonthOrder = months.indexOf(month);
-                    const currentMonthOrder = months.indexOf(currentMonthName);
+                      const isPastDate =
+                        session < "2025-26" ||
+                        selectedMonthOrder < currentMonthOrder ||
+                        (selectedMonthOrder === currentMonthOrder && day < currentDay);
 
-                    const isPastDate =
-                      session < "2025-26" ||
-                      selectedMonthOrder < currentMonthOrder ||
-                      (selectedMonthOrder === currentMonthOrder &&
-                        day < currentDay);
+                      const isLocked = isPastDate && status;
 
-                    const isLocked = isPastDate && status;
-
-                    return (
-                      <td key={day} className="border-l text-center p-1">
-                        <div className="flex flex-col gap-1 items-center">
-                          <button
-                            disabled={isLocked}
-                            onClick={() => markAttendance(student, day, "P")}
-                            className={`w-7 h-5 text-[9px] font-bold rounded ${
-                              status === "P"
-                                ? "bg-green-600 text-white"
-                                : "bg-gray-100 text-gray-400"
-                            } ${isLocked ? "opacity-30" : ""}`}
-                          >
-                            P
-                          </button>
-                          <button
-                            disabled={isLocked}
-                            onClick={() => markAttendance(student, day, "A")}
-                            className={`w-7 h-5 text-[9px] font-bold rounded ${
-                              status === "A"
-                                ? "bg-red-600 text-white"
-                                : "bg-gray-100 text-gray-400"
-                            } ${isLocked ? "opacity-30" : ""}`}
-                          >
-                            A
-                          </button>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      return (
+                        <td key={day} className="text-center p-1 sm:p-2">
+                          <div className="flex flex-col gap-1 items-center">
+                            <button
+                              disabled={isLocked}
+                              onClick={() => markAttendance(student, day, "P")}
+                              className={`w-8 h-7 sm:w-10 sm:h-8 text-[10px] font-black rounded-md transition-all
+                                ${status === "P" ? "bg-green-600 text-white shadow-md" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}
+                                ${isLocked ? "opacity-25 cursor-not-allowed" : "active:scale-90"}`}>
+                              P
+                            </button>
+                            <button
+                              disabled={isLocked}
+                              onClick={() => markAttendance(student, day, "A")}
+                              className={`w-8 h-7 sm:w-10 sm:h-8 text-[10px] font-black rounded-md transition-all
+                                ${status === "A" ? "bg-red-600 text-white shadow-md" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}
+                                ${isLocked ? "opacity-25 cursor-not-allowed" : "active:scale-90"}`}>
+                              A
+                            </button>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* EMPTY STATE */}
       {filteredData.length === 0 && (
-        <div className="p-10 text-center text-gray-500">
-          No students found
+        <div className="p-16 text-center bg-white mt-4 rounded-2xl border-2 border-dashed border-gray-200 shadow-inner">
+          <div className="text-4xl mb-3 animate-bounce">🔍</div>
+          <p className="text-gray-500 font-bold">No students found matching your search or filters.</p>
         </div>
       )}
-
     </div>
-  );
+  </div>
+);
 }
