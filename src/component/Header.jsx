@@ -1,7 +1,7 @@
 import { useSidebar } from "./SidebarContext";
-import { FaBars, FaSignOutAlt } from "react-icons/fa"; // Icon bhi sundar kar diya
+import { FaBars, FaSignOutAlt, FaShieldAlt } from "react-icons/fa"; 
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase"; // Firebase signout ke liye
+import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 
 export default function Header() {
@@ -12,49 +12,57 @@ export default function Header() {
     const confirmLogout = window.confirm("Kya aap sach mein logout karna chahte hain?");
     if (confirmLogout) {
       try {
-        // 1. Firebase se logout karein
         await signOut(auth);
-        
-        // 2. Redirect to Login
-        alert("Logged out successfully!");
         navigate("/");
       } catch (error) {
         console.error("Logout Error:", error);
-        // Agar auth nahi bhi hai, tab bhi login par bhej do
-        navigate("/");
       }
     }
   };
 
   return (
-    <div className="w-full bg-white shadow-sm p-4 sticky top-0 z-40 border-b border-gray-100">
-      {/* Left Side: Toggle & Title */}
-      <div className="container flex justify-between items-center ">
+    <div className="w-full bg-white shadow-sm p-3 md:p-4 sticky top-0 z-40 border-b border-slate-100">
+      <div className="conatiner  mx-auto flex justify-between items-center">
+        
+        {/* LEFT: Sidebar Toggle & App Name */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={toggleSidebar} 
+            className="p-2.5 hover:bg-slate-50 rounded-2xl text-slate-600 transition-all active:scale-90 border border-transparent hover:border-slate-200"
+          >
+            <FaBars size={18} />
+          </button>
+          <div>
+            <h1 className="text-base md:text-lg font-black text-slate-800 leading-none">EDU ADMIN</h1>
+            <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Authorized
+            </p>
+          </div>
+        </div>
+        
+        {/* RIGHT: Buttons */}
+        <div className="flex items-center gap-2 md:gap-3">
+          
+          {/* Change Password Button */}
+          <button 
+            onClick={() => navigate("/change-password")}
+            className="flex items-center gap-2 bg-slate-50 text-slate-600 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl hover:bg-slate-900 hover:text-white transition-all duration-300 active:scale-95 font-black text-[10px] uppercase tracking-widest"
+          >
+            <FaShieldAlt size={14} className="text-blue-500" />
+            <span className="hidden sm:inline">Security</span>
+          </button>
 
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={toggleSidebar} 
-          className="p-2 hover:bg-gray-100 rounded-lg text-gray-700 transition-colors"
-          title="Toggle Sidebar"
-        >
-          <FaBars size={22} />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800 leading-none">Admin Panel</h1>
-          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mt-1">School Management</p>
+          {/* Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl hover:bg-red-600 hover:text-white transition-all duration-300 active:scale-95 font-black text-[10px] uppercase tracking-widest"
+          >
+            <FaSignOutAlt size={14} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+
         </div>
       </div>
-      
-      {/* Right Side: Logout Button */}
-      <button 
-        onClick={handleLogout}
-        className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl hover:bg-red-600 hover:text-white border border-red-100 shadow-sm transition-all duration-300 active:scale-95 font-semibold text-sm"
-      >
-        <FaSignOutAlt />
-        <span className="hidden sm:inline">Logout</span>
-      </button>
-      </div>
-
     </div>
   );
 }

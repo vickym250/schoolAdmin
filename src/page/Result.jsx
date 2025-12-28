@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { 
   collection, addDoc, getDocs, query, where, serverTimestamp,
-  doc, deleteDoc, updateDoc 
+  doc, deleteDoc, updateDoc, 
+  getDoc
 } from "firebase/firestore";
 
 
@@ -19,22 +20,44 @@ import toast, { Toaster } from "react-hot-toast";
 
 import { useNavigate } from "react-router-dom";
 
+
+
+
+
 const ReportCardModal = ({ data, onClose }) => {
   const navigate = useNavigate();
- console.log(data);
- 
+  
+  // --- Naya State School Details ke liye ---
+  const [school, setSchool] = useState({
+    name: "Board of Intermediate & Secondary Education",
+    address: "Provisional Result Card"
+  });
+
+  // --- School Details Fetch Karne ka Logic ---
+  useEffect(() => {
+    const fetchSchool = async () => {
+      try {
+        const schoolSnap = await getDoc(doc(db, "settings", "schoolDetails"));
+        if (schoolSnap.exists()) {
+          setSchool(schoolSnap.data());
+        }
+      } catch (err) {
+        console.error("School data fetch error:", err);
+      }
+    };
+    fetchSchool();
+  }, []);
+
   if (!data) return null;
 
-  const { exam, rows, studentId , id } = data;
+  const { exam, rows, studentId, id } = data;
 
-
-
-  // 🔥 AUTO NAVIGATE ONLY FOR ANNUAL
+  // 🔥 AUTO NAVIGATE ONLY FOR ANNUAL (Aapka Original Logic)
   useEffect(() => {
     if (exam === "Annual" && studentId) {
       navigate(`/marksheet/${studentId}`, { replace: true });
     }
-  }, [exam, id, navigate]);
+  }, [exam, id, navigate, studentId]);
 
   // ❌ Annual ke liye modal render hi nahi hoga
   if (exam === "Annual") return null;
@@ -52,16 +75,14 @@ const ReportCardModal = ({ data, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/90 z-[999] flex justify-center items-start overflow-y-auto p-4 md:p-10">
 
-      {/* ✅ PRINT CSS */}
+      {/* ✅ PRINT CSS (UNCHANGED) */}
       <style>
         {`
         @media print {
-
           @page {
             size: A4 portrait;
             margin: 10mm;
           }
-
           html, body {
             width: 210mm;
             height: 297mm;
@@ -70,16 +91,12 @@ const ReportCardModal = ({ data, onClose }) => {
             background: white !important;
             overflow: hidden !important;
           }
-
           body * {
             visibility: hidden !important;
           }
-
-          #printable-area,
-          #printable-area * {
+          #printable-area, #printable-area * {
             visibility: visible !important;
           }
-
           #printable-area {
             position: relative;
             width: 190mm;
@@ -88,21 +105,17 @@ const ReportCardModal = ({ data, onClose }) => {
             padding: 0;
             border: none !important;
             box-shadow: none !important;
-
             transform: scale(0.94);
             transform-origin: top center;
-
             page-break-after: avoid !important;
             page-break-before: avoid !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-
           table, tr, td, th {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-
           .no-print {
             display: none !important;
           }
@@ -131,17 +144,17 @@ const ReportCardModal = ({ data, onClose }) => {
           </button>
         </div>
 
-        {/* HEADER */}
+        {/* HEADER - Ab DB se naam aayega */}
         <div className="text-center border-b-4 border-blue-900 pb-4 mb-6">
-          <h1 className="text-2xl md:text-3xl font-black uppercase text-blue-900">
-            Board of Intermediate & Secondary Education
+          <h1 className="text-xl md:text-3xl font-black uppercase text-blue-900">
+            {school.name}
           </h1>
           <p className="text-md font-bold text-gray-600 tracking-widest uppercase">
-            Provisional Result Card
+            {school.address}
           </p>
         </div>
 
-        {/* BASIC INFO + PHOTO */}
+        {/* BASIC INFO + PHOTO (UNCHANGED) */}
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           <div className="flex-1 grid gap-y-2 text-sm">
             <div className="flex border-b py-1">
@@ -177,7 +190,7 @@ const ReportCardModal = ({ data, onClose }) => {
           </div>
         </div>
 
-        {/* MARKS TABLE */}
+        {/* MARKS TABLE (UNCHANGED) */}
         <table className="w-full border-2 border-black mb-6 text-sm">
           <thead>
             <tr className="bg-blue-900 text-white">
@@ -208,7 +221,7 @@ const ReportCardModal = ({ data, onClose }) => {
           </tfoot>
         </table>
 
-        {/* RESULT SUMMARY */}
+        {/* RESULT SUMMARY (UNCHANGED) */}
         <div className="flex justify-between border-2 border-blue-900 p-4 rounded-lg mb-10">
           <div className="text-center">
             <p className="text-xs text-gray-500">Percentage</p>
@@ -232,7 +245,7 @@ const ReportCardModal = ({ data, onClose }) => {
           </div>
         </div>
 
-        {/* SIGNATURE */}
+        {/* SIGNATURE (UNCHANGED) */}
         <div className="flex justify-between mt-12">
           <div className="text-center">
             <div className="w-32 border-b border-black mb-1"></div>
@@ -254,6 +267,8 @@ const ReportCardModal = ({ data, onClose }) => {
     </div>
   );
 };
+
+
 
 
 

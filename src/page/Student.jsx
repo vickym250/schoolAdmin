@@ -141,7 +141,7 @@ export default function StudentList() {
 
   /* =================== UI =================== */
   return (
-    <div className="p-6 bg-gray-100  container">
+    <div className="p-6 bg-gray-100 mx-auto container">
       <div className={`bg-white p-6 rounded-xl shadow ${open ? "blur-sm" : ""}`}>
         <h2 className="text-2xl font-bold mb-4">
           Student List ({session})

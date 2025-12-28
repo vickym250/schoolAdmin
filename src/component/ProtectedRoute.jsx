@@ -61,7 +61,7 @@ const ProtectedRoute = ({ children }) => {
 
   // 🔒 Not allowed
   if (!allow) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // ✅ Allowed

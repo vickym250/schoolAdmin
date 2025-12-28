@@ -1,14 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from "firebase/firestore";
 import { useParams } from "react-router-dom";
 
 export default function IDCardGenerator() {
   const { studentId } = useParams();
   const [className, setClassName] = useState("Class 1");
   const [students, setStudents] = useState([]);
+  // --- School Detail State ---
+  const [school, setSchool] = useState({
+    name: "Bright Future School",
+    address: "Dumariya, Uttar Pradesh, 272189",
+    logoUrl: ""
+  });
 
   useEffect(() => {
+    // 1. School Details Fetch Karein
+    const fetchSchool = async () => {
+      const docRef = doc(db, "settings", "schoolDetails");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setSchool(docSnap.data());
+      }
+    };
+    fetchSchool();
+
+    // 2. Students Fetch Karein
     const q = query(collection(db, "students"), orderBy("rollNumber", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs
@@ -19,32 +36,26 @@ export default function IDCardGenerator() {
     return () => unsub();
   }, []);
 
-const filteredStudents = studentId
-  ? students.filter((s) => s.id === studentId) // 👈 SINGLE STUDENT
-  : students.filter(
-      (s) => s.className?.toLowerCase() === className.toLowerCase()
-    ); // 👈 ALL CLASS
-
-
-
-
-
-
+  const filteredStudents = studentId
+    ? students.filter((s) => s.id === studentId)
+    : students.filter(
+        (s) => s.className?.toLowerCase() === className.toLowerCase()
+      );
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
 
     let cardsHTML = "";
     filteredStudents.forEach((s) => {
-      // APNI WEBSITE KA URL YAHA DALO (Example niche hai)
       const profileUrl = `https://your-school-site.com/profile/${s.id}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(profileUrl)}`;
 
       cardsHTML += `
         <div class="id-card">
           <div class="header">
-            <div style="font-weight:bold; font-size:16px;">Bright Future School</div>
-            <div style="font-size:10px;">Dumariya, Uttar Pradesh, 272189</div>
+            ${school.logoUrl ? `<img src="${school.logoUrl}" style="height:25px; vertical-align:middle; margin-right:5px;" />` : ""}
+            <div style="font-weight:bold; font-size:16px; display:inline-block; vertical-align:middle;">${school.name}</div>
+            <div style="font-size:9px;">${school.address}</div>
           </div>
           <div class="body">
             <div class="photo">
@@ -110,7 +121,7 @@ const filteredStudents = studentId
               setTimeout(() => {
                 window.print();
                 window.close();
-              }, 800); // 800ms wait taaki QR images load ho jayein
+              }, 1200); 
             };
           </script>
         </body>
@@ -123,36 +134,22 @@ const filteredStudents = studentId
   return (
     <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif", background: "#f5f5f5", minHeight: "100vh" }}>
       <h1 style={{ color: "#1e3a8a" }}>Student ID Card Generator</h1>
-      
- 
-
-
-
-
-
 
       <div style={{ background: "#fff", padding: "30px", borderRadius: "10px", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", display: "inline-block" }}>
-
-        {studentId  ? 
-
-  ""
-  :
-  <div>
-    <p style={{ fontWeight: "bold" }}>Step 1: Select Class</p>
-        <select 
-          value={className} 
-          onChange={(e) => setClassName(e.target.value)}
-          style={{ padding: "12px", width: "220px", borderRadius: "5px", border: "1px solid #ccc", fontSize: "16px", marginBottom: "20px" }}
-        >
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i} value={`Class ${i + 1}`}>Class {i + 1}</option>
-          ))}
-        </select>
-</div>
-
- }
-
-
+        {studentId ? "" : (
+          <div>
+            <p style={{ fontWeight: "bold" }}>Step 1: Select Class</p>
+            <select 
+              value={className} 
+              onChange={(e) => setClassName(e.target.value)}
+              style={{ padding: "12px", width: "220px", borderRadius: "5px", border: "1px solid #ccc", fontSize: "16px", marginBottom: "20px" }}
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={`Class ${i + 1}`}>Class {i + 1}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div style={{ marginTop: "10px" }}>
           <button 
@@ -178,6 +175,7 @@ const filteredStudents = studentId
 
       <div style={{ marginTop: "40px", color: "#888", fontSize: "14px" }}>
         <p>Tip: Ensure "Background Graphics" is ON in print settings.</p>
+        <p>School: {school.name}</p>
       </div>
     </div>
   );
