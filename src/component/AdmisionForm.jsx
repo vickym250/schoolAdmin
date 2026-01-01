@@ -8,7 +8,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
     const [loading, setLoading] = useState(true);
     const [finalPhoto, setFinalPhoto] = useState(null);
     
-    // Naya state school details ke liye
     const [school, setSchool] = useState({
         name: "Your School Name",
         address: "School Address",
@@ -20,13 +19,11 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         const fetchData = async () => {
             if (!studentId) return;
             try {
-                // 1. School Settings Fetch Karein
                 const schoolSnap = await getDoc(doc(db, "settings", "schoolDetails"));
                 if (schoolSnap.exists()) {
                     setSchool(schoolSnap.data());
                 }
 
-                // 2. Student Data Fetch Karein
                 const docSnap = await getDoc(doc(db, "students", studentId));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -75,140 +72,128 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         win.document.close();
     };
 
-    if (loading) return <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center font-bold italic text-blue-600">GENERATING 2 COPIES...</div>;
+    if (loading) return <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center font-bold italic text-blue-600 tracking-widest">LOADING ADMISSION SLIP...</div>;
     if (!student) return null;
 
     const grandTotal = (Number(student.admissionFees) || 0) + (Number(paidAmount) || 0);
 
     const DocumentSheet = ({ copyName }) => (
-        <div className="max-w-[800px] mx-auto bg-white p-6 border-[1px] border-black shadow-xl relative text-sm min-h-[520px] sheet-container page-break">
+        <div className="w-full max-w-[800px] mx-auto bg-white p-3 md:p-5 border-[1px] border-black shadow-xl relative text-sm min-h-[500px] sheet-container page-break overflow-hidden mb-4">
             
-            <div className="absolute top-2 right-2 border border-black px-2 py-0.5 text-[10px] font-bold uppercase">
+            <div className="absolute top-1 right-1 border border-black px-1.5 py-0.5 text-[8px] md:text-[10px] font-bold uppercase bg-white">
                 {copyName}
             </div>
 
-            {/* Dynamic School Header */}
-            <div className="flex items-center border-b-2 border-black pb-3 mb-4 gap-4">
-                <div className="w-20 h-20 flex-shrink-0">
-                    <img 
-                        src={school.logoUrl || "download.jpg"} 
-                        alt="Logo" 
-                        className="w-full h-full object-contain"
-                        onError={(e) => e.target.style.display = 'none'}
-                    />
+            {/* School Header */}
+            <div className="flex items-center border-b-2 border-black pb-2 mb-3 gap-2 md:gap-4">
+                <div className="w-14 h-14 md:w-20 md:h-20 flex-shrink-0">
+                    <img src={school.logoUrl || "download.jpg"} alt="Logo" className="w-full h-full object-contain" onError={(e) => e.target.style.display = 'none'} />
                 </div>
-
-                <div className="flex-1 text-center pr-20">
-                    <h1 className="text-3xl font-black text-blue-900 uppercase leading-none">
-                        {school.name}
-                    </h1>
-                    <p className="font-bold text-[10px] tracking-widest mt-1 uppercase text-gray-600">
-                        {school.affiliation} | {school.address}
-                    </p>
-                    <div className="mt-2 inline-block border-2 border-black px-4 py-0.5 bg-black text-white font-bold text-xs tracking-wider">
-                        ADMISSION RECORD: {student.session || "2024-25"}
-                    </div>
+                <div className="flex-1 text-center pr-8 md:pr-20">
+                    <h1 className="text-xl md:text-3xl font-black text-blue-900 uppercase leading-none">{school.name}</h1>
+                    <p className="font-bold text-[8px] md:text-[10px] mt-1 uppercase text-gray-600">{school.affiliation} | {school.address}</p>
+                    <div className="mt-1 inline-block border border-black px-3 py-0.5 bg-black text-white font-bold text-[9px] md:text-xs uppercase">ADMISSION RECORD: {student.session || "2024-25"}</div>
                 </div>
             </div>
 
-            {/* Top Grid & Photo */}
-            <div className="flex justify-between items-start mb-4 gap-4">
-                <div className="flex-1 grid grid-cols-2 border-l border-t border-black text-[11px]">
-                    <div className="border-r border-b border-black p-1.5 font-bold bg-gray-100">REGISTRATION NO.</div>
-                    <div className="border-r border-b border-black p-1.5 font-black text-blue-800 uppercase">{student.regNo}</div>
-                    <div className="border-r border-b border-black p-1.5 font-bold bg-gray-100">ROLL NUMBER</div>
-                    <div className="border-r border-b border-black p-1.5 font-black uppercase">{student.rollNumber || "---"}</div>
-                    <div className="border-r border-b border-black p-1.5 font-bold bg-gray-100">CLASS / GRADE</div>
-                    <div className="border-r border-b border-black p-1.5 font-black text-blue-800 italic uppercase">{student.className}</div>
-                    <div className="border-r border-b border-black p-1.5 font-bold bg-gray-100">DATE</div>
-                    <div className="border-r border-b border-black p-1.5 font-bold">{new Date().toLocaleDateString('en-IN')}</div>
+            {/* Registration & Photo Section */}
+            <div className="flex justify-between items-start mb-3 gap-2 md:gap-4">
+                <div className="flex-1 grid grid-cols-2 border-l border-t border-black text-[9px] md:text-[11px]">
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-bold bg-gray-100 uppercase">Reg No.</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-black text-blue-800 uppercase">{student.regNo}</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-bold bg-gray-100 uppercase">Class</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-black uppercase italic">{student.className}</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-bold bg-gray-100 uppercase">Roll No.</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-black uppercase">{student.rollNumber || "---"}</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-bold bg-gray-100 uppercase">Date</div>
+                    <div className="border-r border-b border-black p-1 md:p-1.5 font-bold">{new Date().toLocaleDateString('en-IN')}</div>
                 </div>
                 
-                <div className="w-24 h-32 border-2 border-black flex items-center justify-center overflow-hidden bg-gray-50">
+                <div className="w-16 h-20 md:w-24 md:h-30 border-2 border-black flex items-center justify-center overflow-hidden bg-gray-50 flex-shrink-0">
                     {finalPhoto ? <img src={finalPhoto} className="w-full h-full object-cover" alt="S" /> : <span className="text-[8px] font-bold text-gray-400 uppercase text-center">PHOTO</span>}
                 </div>
             </div>
 
-            {/* Student Profile */}
+            {/* Student Profile Section (DOB & Gender Included) */}
             <div className="border-t border-l border-black mb-3">
-                <h3 className="bg-blue-900 text-white font-black px-2 py-0.5 border-r border-b border-black text-[10px] uppercase">Student Profile</h3>
-                <div className="grid grid-cols-4 text-[11px]">
-                    <div className="p-1.5 border-r border-b border-black font-bold bg-gray-50">STUDENT NAME</div>
-                    <div className="p-1.5 border-r border-b border-black font-black uppercase col-span-3 text-blue-900">{student.name}</div>
-                    <div className="p-1.5 border-r border-b border-black font-bold bg-gray-50">FATHER'S NAME</div>
-                    <div className="p-1.5 border-r border-b border-black font-bold uppercase col-span-3">{student.fatherName}</div>
-                    <div className="p-1.5 border-r border-b border-black font-bold bg-gray-50">DOB</div>
-                    <div className="p-1.5 border-r border-b border-black font-bold uppercase col-span-3">{student.dob}</div>
-                    <div className="p-1.5 border-r border-b border-black font-bold bg-gray-50 uppercase">Aadhaar / Address</div>
-                    <div className="p-1.5 border-r border-b border-black col-span-3 text-[10px] font-bold">{student.aadhaar} | {student.address}</div>
-                </div>
-            </div>
+                <h3 className="bg-blue-900 text-white font-black px-2 py-0.5 border-r border-b border-black text-[9px] md:text-[10px] uppercase">Student Profile</h3>
+                <div className="grid grid-cols-4 text-[10px] md:text-[11px]">
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold bg-gray-50">STUDENT NAME</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-black uppercase col-span-3 text-blue-900">{student.name}</div>
+                    
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold bg-gray-50">FATHER NAME</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold uppercase col-span-3">{student.fatherName}</div>
+                    
+                    {/* New Row for DOB and Gender */}
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold bg-gray-50 uppercase">Date of Birth</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold uppercase">{student.dob}</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold bg-gray-50 uppercase">Gender</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold uppercase text-blue-800">{student.gender || "---"}</div>
 
-            {/* Subjects */}
-            <div className="border-t border-l border-black mb-3">
-                <div className="grid grid-cols-4 text-[11px]">
-                    <div className="p-1.5 border-r border-b border-black font-bold bg-gray-50">SUBJECTS</div>
-                    <div className="p-1.5 border-r border-b border-black col-span-3 font-bold uppercase text-blue-800 italic">
-                        {student.subjects?.length > 0 ? student.subjects.join(" • ") : "Regular Subjects"}
-                    </div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black font-bold bg-gray-50 uppercase">Aadhaar/Add.</div>
+                    <div className="p-1 md:p-1.5 border-r border-b border-black col-span-3 text-[9px] md:text-[10px] font-bold uppercase">{student.aadhaar} | {student.address}</div>
                 </div>
             </div>
 
             {/* Fees Table */}
-            <div className="mb-4">
-                <table className="w-full border-collapse border-2 border-black text-[11px]">
-                    <thead className="bg-gray-100">
+            <div className="mb-3">
+                <table className="w-full border-collapse border-2 border-black text-[10px] md:text-[11px]">
+                    <thead className="bg-gray-100 uppercase">
                         <tr>
-                            <th className="border border-black p-1 text-left font-black">FEE DESCRIPTION</th>
-                            <th className="border border-black p-1 text-right font-black">AMOUNT (₹)</th>
+                            <th className="border border-black p-1 text-left font-black">Fee Description</th>
+                            <th className="border border-black p-1 text-right font-black">Amount</th>
                         </tr>
                     </thead>
-                    <tbody className="font-bold">
+                    <tbody className="font-bold italic">
                         <tr>
-                            <td className="border border-black p-1 font-normal uppercase italic">Admission & Registration Fees</td>
-                            <td className="border border-black p-1 text-right italic">₹{Number(student.admissionFees).toFixed(2)}</td>
+                            <td className="border border-black p-1 font-normal uppercase">Admission & Reg. Fees</td>
+                            <td className="border border-black p-1 text-right">₹{Number(student.admissionFees).toFixed(2)}</td>
                         </tr>
                         {paidAmount > 0 && (
-                            <tr className="bg-green-50">
-                                <td className="border border-black p-1 font-normal uppercase text-blue-700">Tuition Fees ({paidMonthsList?.join(", ")})</td>
-                                <td className="border border-black p-1 text-right italic">₹{Number(paidAmount).toFixed(2)}</td>
+                            <tr className="bg-green-50 text-blue-800">
+                                <td className="border border-black p-1 font-normal uppercase">Tuition Fee ({paidMonthsList?.join(", ")})</td>
+                                <td className="border border-black p-1 text-right">₹{Number(paidAmount).toFixed(2)}</td>
                             </tr>
                         )}
-                        <tr className="bg-blue-50">
-                            <td className="border border-black p-1.5 text-right font-black uppercase">Grand Total:</td>
-                            <td className="border border-black p-1.5 text-right text-blue-900 text-lg font-black italic">₹{grandTotal.toFixed(2)}/-</td>
+                        <tr className="bg-blue-50 not-italic">
+                            <td className="border border-black p-1.5 text-right font-black uppercase text-xs">Grand Total:</td>
+                            <td className="border border-black p-1.5 text-right text-blue-900 text-sm md:text-lg font-black italic">₹{grandTotal.toFixed(2)}/-</td>
                         </tr>
                     </tbody>
                 </table>
-                <p className="mt-1 text-[9px] font-black uppercase italic text-gray-500">In Words: {toWords(Math.floor(grandTotal))} Only</p>
+                <p className="mt-1 text-[8px] md:text-[9px] font-black uppercase italic text-gray-500">In Words: {toWords(Math.floor(grandTotal))} Only</p>
             </div>
 
-            {/* Signatures */}
-            <div className="flex justify-between px-10 mt-10">
-                <div className="text-center w-32 border-t border-black pt-1 font-bold text-[10px] uppercase">Parent Sign</div>
-                <div className="text-center w-32 border-t border-black pt-1 font-bold text-[10px] uppercase">Principal/Seal</div>
+            {/* Signature Area */}
+            <div className="flex justify-between px-6 md:px-10 mt-6 md:mt-10">
+                <div className="text-center w-24 md:w-32 border-t border-black pt-1 font-bold text-[9px] md:text-[10px] uppercase">Parent's Sign</div>
+                <div className="text-center w-24 md:w-32 border-t border-black pt-1 font-bold text-[9px] md:text-[10px] uppercase">Principal / Seal</div>
             </div>
         </div>
     );
 
     return (
-        <div className="fixed inset-0 bg-gray-200 z-[100] overflow-y-auto p-4">
-            <div className="max-w-[800px] mx-auto flex justify-between mb-4 no-print bg-white p-3 rounded-lg shadow-md border-b-2 border-blue-600">
-                <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all">← Close</button>
-                <div className="font-bold text-blue-700 text-sm animate-pulse uppercase tracking-tighter">Ready for A4 Print (2 Slips)</div>
-                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 rounded-lg text-sm font-black shadow-lg transition-all tracking-widest">PRINT NOW</button>
+        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto p-2 md:p-4">
+            {/* Header with Print/Back Buttons */}
+            <div className="max-w-[800px] mx-auto sticky top-0 z-[110] flex items-center justify-between mb-4 no-print bg-white p-2 md:p-3 rounded-lg shadow-md border-b-4 border-blue-600">
+                <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-md">← Close</button>
+                <div className="font-bold text-blue-800 text-[10px] md:text-xs uppercase tracking-tight text-center">Receipt Generator (A4)</div>
+                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-md text-xs font-black shadow-lg tracking-widest transition-all">PRINT NOW</button>
             </div>
 
+            {/* Print Area */}
             <div ref={printRef}>
                 <DocumentSheet copyName="Office Copy" />
-                <div className="my-6 border-b-2 border-dashed border-gray-400 no-print flex justify-center italic text-gray-400 text-xs uppercase font-bold tracking-widest">✂️ Cut along this line ✂️</div>
+                <div className="my-2 md:my-4 border-b-2 border-dashed border-gray-400 no-print flex justify-center italic text-gray-400 text-[9px] uppercase font-bold py-2">
+                    ✂️ Cut Along This Line (Student Receipt Below) ✂️
+                </div>
                 <DocumentSheet copyName="Student Copy" />
             </div>
         </div>
     );
 }
 
-// Helper function toWords (Wahi purana)
+// Function to convert Number to Words
 function toWords(num) {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];

@@ -47,7 +47,7 @@ export default function IDCardGenerator() {
 
     let cardsHTML = "";
     filteredStudents.forEach((s) => {
-      const profileUrl = `https://your-school-site.com/profile/${s.id}`;
+      const profileUrl = `https://school-admin-pi.vercel.app/profile/${s.id}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(profileUrl)}`;
 
       cardsHTML += `
