@@ -46,9 +46,10 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         fetchData();
     }, [studentId]);
 
-    const handlePrint = () => {
+const handlePrint = () => {
         const printContent = printRef.current.innerHTML;
-        const win = window.open('', '_blank', 'width=900,height=900');
+        const win = window.open('', '_blank');
+        
         win.document.write(`
             <html>
                 <head>
@@ -59,19 +60,26 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                         @media print {
                             .no-print { display: none; }
                             body { -webkit-print-color-adjust: exact !important; margin: 0; padding: 0; }
-                            .page-break { page-break-after: always; }
                         }
-                        .sheet-container { margin-bottom: 10px; position: relative; }
+                        .sheet-container { margin-bottom: 10px; position: relative; border: 1px solid black; }
                     </style>
                 </head>
-                <body onload="window.print(); window.close();">
+                <body>
                     <div>${printContent}</div>
+                    <script>
+                        // Ye script wait karegi jab tak sab load na ho jaye
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                window.close();
+                            }, 500); // 0.5 second ka delay
+                        };
+                    </script>
                 </body>
             </html>
         `);
         win.document.close();
     };
-
     if (loading) return <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center font-bold italic text-blue-600 tracking-widest">LOADING ADMISSION SLIP...</div>;
     if (!student) return null;
 
