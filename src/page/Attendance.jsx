@@ -7,7 +7,9 @@ import {
   onSnapshot,
   query,
   orderBy,
-  setDoc
+  setDoc,
+  addDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 
@@ -72,11 +74,31 @@ export default function Attendance() {
     if (!holidayReason) return;
 
     try {
+      const actualYear = getActualYear();
+      const holidayDate = `${day} ${month} ${actualYear}`;
+
+      // 1. Lock Holiday in Metadata (Attendance logic ke liye)
       await setDoc(doc(db, "metadata", `holidays_${session}_${month}`), { 
-        [dayKey]: true, [`${dayKey}_reason`]: holidayReason 
+        [dayKey]: true, 
+        [`${dayKey}_reason`]: holidayReason 
       }, { merge: true });
-      toast.success("Holiday Locked!");
-    } catch (e) { toast.error("Error!"); }
+
+      // 2. Add to Notices Collection (Students ko dikhane ke liye)
+      await addDoc(collection(db, "notices"), {
+        title: "Holiday Notice 🚩",
+        description: `School will remain closed on ${holidayDate} due to: ${holidayReason}`,
+        date: holidayDate,
+        createdAt: serverTimestamp(),
+        audience: "student",
+        type: "holiday",
+        session: session
+      });
+
+      toast.success("Holiday Locked & Notice Published!");
+    } catch (e) { 
+      console.error(e);
+      toast.error("Error setting holiday!"); 
+    }
   };
 
   const markAttendance = async (student, day, status) => {
@@ -142,7 +164,7 @@ export default function Attendance() {
                       <th key={i} className={`p-2 text-center border-b border-slate-700 w-[50px] sm:w-[55px] ${day === currentDay && month === currentMonthName ? "bg-orange-500" : ""}`}>
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[10px] font-bold">{day}</span>
-                          <button onClick={() => toggleHoliday(day)} className={`text-[9px] px-1 py-0.5 rounded border transition-all ${sun ? "bg-red-700 text-white border-red-800" : isH ? "bg-red-500 text-white border-red-400" : "bg-slate-700 text-gray-400 border-slate-600 hover:text-white"}`}>{sun ? "S" : isH ? "H" : "D"}</button>
+                          <button onClick={() => toggleHoliday(day)} className={`text-[9px] px-1 py-0.5 rounded border transition-all ${sun ? "bg-red-700 text-white border-red-800" : isH ? "bg-red-50 text-white border-red-400" : "bg-slate-700 text-gray-400 border-slate-600 hover:text-white"}`}>{sun ? "S" : isH ? "H" : "D"}</button>
                         </div>
                       </th>
                     );
@@ -182,7 +204,7 @@ export default function Attendance() {
                                 {/* Holiday Label */}
                                 <span className={`text-[8px] font-black rotate-[-90deg] uppercase tracking-tighter ${sun ? "text-red-800" : "text-red-500"}`}>HOLIDAY</span>
                                 
-                                {/* 🚀 BADA BOX (Mobile Touch & Desktop Hover support) */}
+                                {/* BADA BOX (Mobile & Desktop) */}
                                 {(activeTooltip === tooltipKey) && (
                                   <div className="fixed z-[1000] -translate-y-20 -translate-x-1/2 left-1/2 md:absolute md:-translate-y-24 md:left-1/2 pointer-events-auto">
                                     <div className="bg-slate-900 text-white border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 min-w-[180px] max-w-[260px] text-center animate-in fade-in zoom-in duration-200">
