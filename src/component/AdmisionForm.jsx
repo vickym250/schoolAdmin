@@ -8,6 +8,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
     const [loading, setLoading] = useState(true);
     const [finalPhoto, setFinalPhoto] = useState(null);
     
+    // School details state
     const [school, setSchool] = useState({
         name: "Your School Name",
         address: "School Address",
@@ -19,20 +20,20 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         const fetchData = async () => {
             if (!studentId) return;
             try {
-                // 1. School Details Fetch Karein
+                // 1. Fetch School Details
                 const schoolSnap = await getDoc(doc(db, "settings", "schoolDetails"));
                 if (schoolSnap.exists()) {
                     setSchool(schoolSnap.data());
                 }
 
-                // 2. Student Data Fetch Karein
+                // 2. Fetch Student Data
                 const docSnap = await getDoc(doc(db, "students", studentId));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setStudent(data);
                     
                     if (data.photoURL) {
-                        // Photo Preloading logic taaki printing mein blank na aaye
+                        // Preloading logic to prevent blank photos during printing
                         const img = new Image();
                         const proxyUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(data.photoURL)}`;
                         
@@ -61,7 +62,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         fetchData();
     }, [studentId]);
 
-    // Stable Mobile Print Logic
+    // Stable Mobile Print Logic using Iframe
     const handlePrint = () => {
         const content = printRef.current.innerHTML;
         
@@ -171,6 +172,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                     <tr><td className="bg-gray font-bold uppercase">Father Name</td><td className="font-bold uppercase">{student.fatherName}</td></tr>
                     <tr><td className="bg-gray font-bold uppercase">Date of Birth</td><td className="font-bold uppercase">{student.dob}</td></tr>
                     <tr><td className="bg-gray font-bold uppercase">Aadhaar/Add.</td><td style={{ fontSize: '10px' }}>{student.aadhaar} | {student.address}</td></tr>
+                    <tr><td className="bg-gray font-bold uppercase">Phone </td><td style={{ fontSize: '10px' }}>{student.phone} </td></tr>
                 </tbody>
             </table>
 
@@ -181,7 +183,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                 <tbody>
                     <tr><td className="uppercase italic">Admission & Registration Fees</td><td style={{ textAlign: 'right' }}>₹{Number(student.admissionFees).toFixed(2)}</td></tr>
                     {paidAmount > 0 && (
-                        <tr><td className="uppercase italic" style={{ color: '#1e40af' }}>Tuition Fees (${paidMonthsList?.join(", ")})</td><td style={{ textAlign: 'right' }}>₹{Number(paidAmount).toFixed(2)}</td></tr>
+                        <tr><td className="uppercase italic" style={{ color: '#1e40af' }}>Tuition Fees ({paidMonthsList?.join(", ")})</td><td style={{ textAlign: 'right' }}>₹{Number(paidAmount).toFixed(2)}</td></tr>
                     )}
                     <tr style={{ background: '#eff6ff' }}>
                         <td style={{ fontWeight: '900', textTransform: 'uppercase' }}>Grand Total Amount:</td>
@@ -226,4 +228,4 @@ function toWords(num) {
         return n;
     }
     return convert(num);
-}
+}a
