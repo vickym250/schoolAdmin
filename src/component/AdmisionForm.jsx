@@ -8,7 +8,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
     const [loading, setLoading] = useState(true);
     const [finalPhoto, setFinalPhoto] = useState(null);
     
-    // School details state
     const [school, setSchool] = useState({
         name: "Your School Name",
         address: "School Address",
@@ -33,11 +32,27 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                     setStudent(data);
                     
                     if (data.photoURL) {
+                        // Photo Preloading logic taaki printing mein blank na aaye
+                        const img = new Image();
                         const proxyUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(data.photoURL)}`;
-                        setFinalPhoto(proxyUrl);
+                        
+                        img.crossOrigin = "anonymous";
+                        img.src = proxyUrl;
+
+                        img.onload = () => {
+                            setFinalPhoto(proxyUrl);
+                            setLoading(false);
+                        };
+                        img.onerror = () => {
+                            setFinalPhoto(data.photoURL); 
+                            setLoading(false);
+                        };
+                    } else {
+                        setLoading(false);
                     }
+                } else {
+                    setLoading(false);
                 }
-                setLoading(false);
             } catch (err) { 
                 console.error(err); 
                 setLoading(false); 
@@ -46,7 +61,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         fetchData();
     }, [studentId]);
 
-    // Sabse stable Mobile Print Logic (Iframe + Inline Styles)
+    // Stable Mobile Print Logic
     const handlePrint = () => {
         const content = printRef.current.innerHTML;
         
@@ -69,17 +84,18 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
             <html>
                 <head>
                     <title>Print Receipt</title>
+                    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
                     <style>
-                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 10mm; background: #fff; }
+                        @page { size: A4; margin: 0; }
+                        body { margin: 0; padding: 10mm; background: #fff; -webkit-print-color-adjust: exact !important; }
                         .sheet-container { border: 2px solid #000; padding: 15px; margin-bottom: 20px; position: relative; min-height: 480px; }
                         .page-break { page-break-after: always; border-bottom: 2px dashed #000; margin-bottom: 30px; padding-bottom: 20px; }
                         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
                         th, td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 12px; }
-                        .text-center { text-align: center; }
-                        .font-black { font-weight: 900; }
                         .uppercase { text-transform: uppercase; }
                         .text-blue { color: #1e3a8a; }
                         .bg-gray { background-color: #f3f4f6; }
+                        img { display: block; }
                         @media print { .no-print { display: none; } body { padding: 0; } }
                     </style>
                 </head>
@@ -90,8 +106,8 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                             setTimeout(() => {
                                 window.focus();
                                 window.print();
-                                setTimeout(() => { window.frameElement.remove(); }, 1000);
-                            }, 1000);
+                                setTimeout(() => { window.frameElement.remove(); }, 1500);
+                            }, 1500);
                         };
                     </script>
                 </body>
@@ -100,19 +116,23 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         doc.close();
     };
 
-    if (loading) return <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center font-bold italic text-blue-600">PREPARING DOCUMENT...</div>;
+    if (loading) return (
+        <div className="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center font-bold text-blue-600">
+            <div className="mb-4 animate-pulse uppercase italic">Loading Admission Data...</div>
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
     if (!student) return null;
 
     const grandTotal = (Number(student.admissionFees) || 0) + (Number(paidAmount) || 0);
 
     const DocumentSheet = ({ copyName, isLast }) => (
         <div className={`sheet-container ${!isLast ? 'page-break' : ''}`} style={{ maxWidth: '800px', margin: '0 auto 20px' }}>
-            {/* Office/Student Copy Label */}
             <div style={{ position: 'absolute', top: '5px', right: '5px', border: '1px solid #000', padding: '2px 8px', fontSize: '10px', fontWeight: 'bold', background: '#fff' }}>
                 {copyName}
             </div>
             
-            {/* Header Section */}
             <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid #000', paddingBottom: '10px', marginBottom: '15px' }}>
                 <div style={{ width: '70px', height: '70px' }}>
                     <img src={school.logoUrl || "download.jpg"} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -126,7 +146,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                 </div>
             </div>
 
-            {/* Profile & Photo Grid */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', gap: '15px' }}>
                 <div style={{ flex: 1 }}>
                     <table style={{ fontSize: '11px' }}>
@@ -134,16 +153,18 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                             <tr><td className="bg-gray font-bold" style={{ width: '40%' }}>REG NO.</td><td className="font-bold text-blue uppercase">{student.regNo}</td></tr>
                             <tr><td className="bg-gray font-bold">CLASS</td><td className="font-bold uppercase italic">{student.className}</td></tr>
                             <tr><td className="bg-gray font-bold">GENDER</td><td className="font-bold uppercase">{student.gender || "---"}</td></tr>
-                            <tr><td className="bg-gray font-bold">ROLL NO.</td><td className="font-bold uppercase">{student.rollNumber || "---"}</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div style={{ width: '90px', height: '110px', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-                    {finalPhoto ? <img src={finalPhoto} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#999' }}>PHOTO</span>}
+                <div style={{ width: '90px', height: '110px', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', overflow: 'hidden' }}>
+                    {finalPhoto ? (
+                        <img src={finalPhoto} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                        <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#999' }}>PHOTO</span>
+                    )}
                 </div>
             </div>
 
-            {/* Details Table */}
             <table style={{ marginBottom: '15px' }}>
                 <tbody>
                     <tr><td className="bg-gray font-bold uppercase" style={{ width: '30%' }}>Student Name</td><td className="font-bold text-blue uppercase" style={{ fontSize: '14px' }}>{student.name}</td></tr>
@@ -153,7 +174,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
                 </tbody>
             </table>
 
-            {/* Fees Table */}
             <table style={{ marginBottom: '10px' }}>
                 <thead>
                     <tr style={{ background: '#f3f4f6' }}><th className="uppercase font-bold">Fee Description</th><th style={{ textAlign: 'right', fontWeight: 'bold' }}>Amount (₹)</th></tr>
@@ -171,7 +191,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
             </table>
             <p style={{ margin: '5px 0', fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', fontStyle: 'italic', color: '#666' }}>In Words: {toWords(Math.floor(grandTotal))} Only</p>
 
-            {/* Signatures */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', padding: '0 30px' }}>
                 <div style={{ textAlign: 'center', width: '120px', borderTop: '1.5px solid #000', fontSize: '10px', fontWeight: 'bold' }} className="uppercase">Parent's Signature</div>
                 <div style={{ textAlign: 'center', width: '120px', borderTop: '1.5px solid #000', fontSize: '10px', fontWeight: 'bold' }} className="uppercase">Principal / Seal</div>
@@ -181,13 +200,11 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
 
     return (
         <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto p-2 md:p-4">
-            {/* Mobile-Friendly Navbar */}
             <div className="max-w-[800px] mx-auto sticky top-0 bg-white p-3 rounded-lg shadow-md flex justify-between items-center no-print z-[110] mb-6 border-b-4 border-blue-600">
-                <button onClick={onClose} className="bg-red-500 text-white px-4 py-1.5 rounded-lg font-bold text-sm shadow-md transition-transform active:scale-95">← Back</button>
-                <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-1.5 rounded-lg font-black text-sm shadow-lg tracking-widest transition-transform active:scale-95">PRINT SLIP</button>
+                <button onClick={onClose} className="bg-red-500 text-white px-4 py-1.5 rounded-lg font-bold text-sm shadow-md active:scale-95 transition-all">← Close</button>
+                <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-1.5 rounded-lg font-black text-sm shadow-lg tracking-widest active:scale-95 transition-all">PRINT NOW</button>
             </div>
 
-            {/* The actual content to be printed */}
             <div ref={printRef}>
                 <DocumentSheet copyName="Office Copy" isLast={false} />
                 <div className="no-print text-center text-gray-400 my-6 uppercase text-xs font-bold tracking-[10px]">✂️✂️✂️✂️✂️</div>
@@ -197,7 +214,6 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
     );
 }
 
-// Simplified toWords function for stability
 function toWords(num) {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
