@@ -8,52 +8,35 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
     const [loading, setLoading] = useState(true);
     const [finalPhoto, setFinalPhoto] = useState(null);
     
-    // School details state
     const [school, setSchool] = useState({
         name: "Your School Name",
         address: "School Address",
         affiliation: "Affiliation Info",
-        logoUrl: "download.jpg"
+        logoUrl: "download.jpg",
+        phone: "91XXXXXXXX"
     });
 
     useEffect(() => {
         const fetchData = async () => {
             if (!studentId) return;
             try {
-                // 1. Fetch School Details
                 const schoolSnap = await getDoc(doc(db, "settings", "schoolDetails"));
-                if (schoolSnap.exists()) {
-                    setSchool(schoolSnap.data());
-                }
+                if (schoolSnap.exists()) setSchool(schoolSnap.data());
 
-                // 2. Fetch Student Data
                 const docSnap = await getDoc(doc(db, "students", studentId));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     setStudent(data);
                     
                     if (data.photoURL) {
-                        // Preloading logic to prevent blank photos during printing
                         const img = new Image();
                         const proxyUrl = `https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=${encodeURIComponent(data.photoURL)}`;
-                        
                         img.crossOrigin = "anonymous";
                         img.src = proxyUrl;
-
-                        img.onload = () => {
-                            setFinalPhoto(proxyUrl);
-                            setLoading(false);
-                        };
-                        img.onerror = () => {
-                            setFinalPhoto(data.photoURL); 
-                            setLoading(false);
-                        };
-                    } else {
-                        setLoading(false);
-                    }
-                } else {
-                    setLoading(false);
-                }
+                        img.onload = () => { setFinalPhoto(proxyUrl); setLoading(false); };
+                        img.onerror = () => { setFinalPhoto(data.photoURL); setLoading(false); };
+                    } else { setLoading(false); }
+                } else { setLoading(false); }
             } catch (err) { 
                 console.error(err); 
                 setLoading(false); 
@@ -62,10 +45,8 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         fetchData();
     }, [studentId]);
 
-    // Stable Mobile Print Logic using Iframe
     const handlePrint = () => {
         const content = printRef.current.innerHTML;
-        
         let iframe = document.getElementById('print-iframe');
         if (iframe) document.body.removeChild(iframe);
 
@@ -84,20 +65,15 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
         doc.write(`
             <html>
                 <head>
-                    <title>Print Receipt</title>
+                    <title>Admission Slip</title>
                     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
                     <style>
                         @page { size: A4; margin: 0; }
                         body { margin: 0; padding: 10mm; background: #fff; -webkit-print-color-adjust: exact !important; }
-                        .sheet-container { border: 2px solid #000; padding: 15px; margin-bottom: 20px; position: relative; min-height: 480px; }
+                        .sheet-container { border: 2px solid #000; padding: 20px; margin-bottom: 20px; position: relative; }
                         .page-break { page-break-after: always; border-bottom: 2px dashed #000; margin-bottom: 30px; padding-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                        th, td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 12px; }
-                        .uppercase { text-transform: uppercase; }
-                        .text-blue { color: #1e3a8a; }
-                        .bg-gray { background-color: #f3f4f6; }
-                        img { display: block; }
-                        @media print { .no-print { display: none; } body { padding: 0; } }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 12px; }
                     </style>
                 </head>
                 <body>
@@ -119,7 +95,7 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
 
     if (loading) return (
         <div className="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center font-bold text-blue-600">
-            <div className="mb-4 animate-pulse uppercase italic">Loading Admission Data...</div>
+            <div className="mb-4 uppercase italic">Loading Profile...</div>
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
@@ -130,86 +106,106 @@ export default function AdmissionDetails({ studentId, paidAmount, paidMonthsList
 
     const DocumentSheet = ({ copyName, isLast }) => (
         <div className={`sheet-container ${!isLast ? 'page-break' : ''}`} style={{ maxWidth: '800px', margin: '0 auto 20px' }}>
-            <div style={{ position: 'absolute', top: '5px', right: '5px', border: '1px solid #000', padding: '2px 8px', fontSize: '10px', fontWeight: 'bold', background: '#fff' }}>
-                {copyName}
-            </div>
+            <div className="absolute top-2 right-2 border-2 border-black px-3 py-1 text-[10px] font-black uppercase bg-black text-white">{copyName}</div>
             
-            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid #000', paddingBottom: '10px', marginBottom: '15px' }}>
-                <div style={{ width: '70px', height: '70px' }}>
-                    <img src={school.logoUrl || "download.jpg"} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            {/* Header */}
+            <div className="flex items-center border-b-4 border-black pb-4 gap-4">
+                <div className="w-20 h-20 flex-shrink-0">
+                    <img src={school.logoUrl || "download.jpg"} alt="logo" className="w-full h-full object-contain" />
                 </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                    <h1 style={{ margin: 0, fontSize: '24px', color: '#1e3a8a', fontWeight: '900' }} className="uppercase">{school.name}</h1>
-                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 'bold' }}>{school.affiliation} | {school.address}</p>
-                    <div style={{ background: '#000', color: '#fff', display: 'inline-block', padding: '3px 15px', marginTop: '8px', fontSize: '11px', fontWeight: 'bold' }}>
-                        ADMISSION RECORD: {student.session || "2024-25"}
-                    </div>
+                <div className="flex-1 text-center pr-10">
+                    <h1 className="text-3xl font-black text-blue-900 uppercase leading-tight">{school.name}</h1>
+                    <p className="text-[11px] font-bold text-gray-700 uppercase">{school.affiliation} | {school.address}</p>
+                    <p className="text-[12px] font-black text-blue-800">Mob: {school.phone || "N/A"}</p>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', gap: '15px' }}>
-                <div style={{ flex: 1 }}>
-                    <table style={{ fontSize: '11px' }}>
-                        <tbody>
-                            <tr><td className="bg-gray font-bold" style={{ width: '40%' }}>REG NO.</td><td className="font-bold text-blue uppercase">{student.regNo}</td></tr>
-                            <tr><td className="bg-gray font-bold">CLASS</td><td className="font-bold uppercase italic">{student.className}</td></tr>
-                            <tr><td className="bg-gray font-bold">GENDER</td><td className="font-bold uppercase">{student.gender || "---"}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style={{ width: '90px', height: '110px', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', overflow: 'hidden' }}>
+            {/* Top Grid: Photo and Basic Info */}
+            <div className="flex gap-4 my-4 items-stretch">
+                <div className="w-32 h-40 border-4 border-black flex-shrink-0 bg-gray-50 overflow-hidden flex items-center justify-center">
                     {finalPhoto ? (
-                        <img src={finalPhoto} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={finalPhoto} alt="S" className="w-full h-full object-cover" />
                     ) : (
-                        <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#999' }}>PHOTO</span>
+                        <span className="text-[10px] font-bold text-gray-400">PHOTO</span>
                     )}
+                </div>
+                <div className="flex-1 grid grid-cols-2 border-l-2 border-t-2 border-black">
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Reg Number</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black text-blue-900 uppercase">{student.regNo}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Class / Section</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase">{student.className}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Roll Number</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase">{student.rollNumber || "---"}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Receipt Date</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase">{new Date().toLocaleDateString('en-IN')}</div>
                 </div>
             </div>
 
-            <table style={{ marginBottom: '15px' }}>
-                <tbody>
-                    <tr><td className="bg-gray font-bold uppercase" style={{ width: '30%' }}>Student Name</td><td className="font-bold text-blue uppercase" style={{ fontSize: '14px' }}>{student.name}</td></tr>
-                    <tr><td className="bg-gray font-bold uppercase">Father Name</td><td className="font-bold uppercase">{student.fatherName}</td></tr>
-                    <tr><td className="bg-gray font-bold uppercase">Date of Birth</td><td className="font-bold uppercase">{student.dob}</td></tr>
-                    <tr><td className="bg-gray font-bold uppercase">Aadhaar/Add.</td><td style={{ fontSize: '10px' }}>{student.aadhaar} | {student.address}</td></tr>
-                    <tr><td className="bg-gray font-bold uppercase">Phone </td><td style={{ fontSize: '10px' }}>{student.phone} </td></tr>
-                </tbody>
-            </table>
+            {/* Student Profile */}
+            <div className="border-t-2 border-l-2 border-black mb-4">
+                <div className="grid grid-cols-4">
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Student Name</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black text-blue-900 uppercase col-span-3 text-base">{student.name}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Father Name</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase col-span-3">{student.fatherName}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Date of Birth</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase">{student.dob}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Gender</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase">{student.gender || "---"}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Contact No.</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-black uppercase text-blue-800">{student.phone || student.contact || "N/A"}</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black bg-gray-100 font-bold text-[10px] uppercase">Address</div>
+                    <div className="p-2 border-r-2 border-b-2 border-black font-bold text-[10px] uppercase italic">{student.address}</div>
+                </div>
+            </div>
 
-            <table style={{ marginBottom: '10px' }}>
-                <thead>
-                    <tr style={{ background: '#f3f4f6' }}><th className="uppercase font-bold">Fee Description</th><th style={{ textAlign: 'right', fontWeight: 'bold' }}>Amount (₹)</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td className="uppercase italic">Admission & Registration Fees</td><td style={{ textAlign: 'right' }}>₹{Number(student.admissionFees).toFixed(2)}</td></tr>
-                    {paidAmount > 0 && (
-                        <tr><td className="uppercase italic" style={{ color: '#1e40af' }}>Tuition Fees ({paidMonthsList?.join(", ")})</td><td style={{ textAlign: 'right' }}>₹{Number(paidAmount).toFixed(2)}</td></tr>
-                    )}
-                    <tr style={{ background: '#eff6ff' }}>
-                        <td style={{ fontWeight: '900', textTransform: 'uppercase' }}>Grand Total Amount:</td>
-                        <td style={{ textAlign: 'right', fontWeight: '900', fontSize: '18px', color: '#1e3a8a' }}>₹{grandTotal.toFixed(2)}/-</td>
-                    </tr>
-                </tbody>
-            </table>
-            <p style={{ margin: '5px 0', fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', fontStyle: 'italic', color: '#666' }}>In Words: {toWords(Math.floor(grandTotal))} Only</p>
+            {/* Fees Table */}
+            <div className="mb-4">
+                <table className="w-full border-collapse border-2 border-black">
+                    <thead className="bg-gray-200">
+                        <tr>
+                            <th className="border border-black p-2 uppercase font-black text-[11px]">Fee Description</th>
+                            <th className="border border-black p-2 text-right uppercase font-black text-[11px]">Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody className="font-bold">
+                        <tr>
+                            <td className="border border-black p-2 uppercase italic text-[11px]">Admission & Registration</td>
+                            <td className="border border-black p-2 text-right">₹{Number(student.admissionFees).toFixed(2)}</td>
+                        </tr>
+                        {paidAmount > 0 && (
+                            <tr className="text-blue-800">
+                                <td className="border border-black p-2 uppercase italic text-[11px]">Tuition Fee (${paidMonthsList?.join(", ")})</td>
+                                <td className="border border-black p-2 text-right font-black">₹{Number(paidAmount).toFixed(2)}</td>
+                            </tr>
+                        )}
+                        <tr className="bg-blue-50">
+                            <td className="border border-black p-3 text-right font-black uppercase text-sm text-gray-700">Net Payable:</td>
+                            <td className="border border-black p-3 text-right text-blue-900 text-xl font-black italic">₹{grandTotal.toFixed(2)}/-</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p className="mt-2 text-[10px] font-black uppercase italic text-gray-600">In Words: {toWords(Math.floor(grandTotal))} Only</p>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', padding: '0 30px' }}>
-                <div style={{ textAlign: 'center', width: '120px', borderTop: '1.5px solid #000', fontSize: '10px', fontWeight: 'bold' }} className="uppercase">Parent's Signature</div>
-                <div style={{ textAlign: 'center', width: '120px', borderTop: '1.5px solid #000', fontSize: '10px', fontWeight: 'bold' }} className="uppercase">Principal / Seal</div>
+            {/* Signatures */}
+            <div className="flex justify-between px-10 mt-12 pb-2">
+                <div className="text-center w-40 border-t-2 border-black pt-1 font-black text-[10px] uppercase">Parent's Signature</div>
+                <div className="text-center w-40 border-t-2 border-black pt-1 font-black text-[10px] uppercase">Principal / Seal</div>
             </div>
         </div>
     );
 
     return (
-        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto p-2 md:p-4">
-            <div className="max-w-[800px] mx-auto sticky top-0 bg-white p-3 rounded-lg shadow-md flex justify-between items-center no-print z-[110] mb-6 border-b-4 border-blue-600">
-                <button onClick={onClose} className="bg-red-500 text-white px-4 py-1.5 rounded-lg font-bold text-sm shadow-md active:scale-95 transition-all">← Close</button>
-                <button onClick={handlePrint} className="bg-blue-600 text-white px-6 py-1.5 rounded-lg font-black text-sm shadow-lg tracking-widest active:scale-95 transition-all">PRINT NOW</button>
+        <div className="fixed inset-0 bg-gray-200 z-[100] overflow-y-auto p-2 md:p-6">
+            <div className="max-w-[800px] mx-auto sticky top-0 bg-white p-3 rounded-xl shadow-lg flex justify-between items-center no-print z-[110] mb-6 border-b-4 border-blue-600">
+                <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-black text-sm shadow active:scale-95 transition-all">← EXIT</button>
+                <div className="hidden sm:block text-blue-800 font-black text-xs uppercase tracking-widest text-center flex-1">Student Receipt System</div>
+                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-black text-sm shadow-lg active:scale-95 transition-all">PRINT NOW</button>
             </div>
-
-            <div ref={printRef}>
+            <div ref={printRef} className="pb-10">
                 <DocumentSheet copyName="Office Copy" isLast={false} />
-                <div className="no-print text-center text-gray-400 my-6 uppercase text-xs font-bold tracking-[10px]">✂️✂️✂️✂️✂️</div>
+                <div className="no-print text-center text-gray-400 my-8 uppercase text-xs font-bold tracking-[15px]">✂️ CUT HERE ✂️</div>
                 <DocumentSheet copyName="Student Copy" isLast={true} />
             </div>
         </div>
@@ -228,4 +224,4 @@ function toWords(num) {
         return n;
     }
     return convert(num);
-}a
+}
