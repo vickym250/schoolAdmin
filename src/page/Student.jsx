@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { updateTotalStudents } from "../component/updateTotalStudents";
+
 export default function StudentList() {
   /* =================== BASIC =================== */
   let navigator = useNavigate()
@@ -54,17 +55,20 @@ export default function StudentList() {
     return () => unsub();
   }, []);
 
-  /* =================== FILTER =================== */
-  const filteredStudents = students.filter((s) => {
-    const matchSession = s.session === session;
-    const matchClass =
-      s.className?.toLowerCase() === className.toLowerCase();
-    const matchSearch =
-      s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.rollNumber?.toString().includes(searchTerm);
+  /* =================== FILTER & SORT (ASCENDING ORDER) =================== */
+  const filteredStudents = students
+    .filter((s) => {
+      const matchSession = s.session === session;
+      const matchClass =
+        s.className?.toLowerCase() === className.toLowerCase();
+      const matchSearch =
+        s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.rollNumber?.toString().includes(searchTerm);
 
-    return matchSession && matchClass && matchSearch;
-  });
+      return matchSession && matchClass && matchSearch;
+    })
+    // 🟢 Yahan Ascending Sort add kiya hai
+    .sort((a, b) => parseInt(a.rollNumber || 0) - parseInt(b.rollNumber || 0));
 
   /* =================== PAY FEES =================== */
   const handlePayFees = async (student) => {
@@ -136,7 +140,12 @@ export default function StudentList() {
         </div>
       </div>
     ));
-     
+  };
+
+  /* =================== EDIT HANDLER =================== */
+  const handleEdit = (student) => {
+    setEditStudent(student);
+    setOpen(true);
   };
 
   /* =================== UI =================== */
@@ -210,7 +219,7 @@ export default function StudentList() {
                     <tr key={s.id} className="border-b hover:bg-blue-50">
                       <td className="p-3">
                         {s.photoURL ? (
-                          <img src={s.photoURL} className="w-10 h-10 rounded-full object-cover" />
+                          <img src={s.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" />
                         ) : (
                           <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                             {s.name?.[0]}
@@ -225,36 +234,41 @@ export default function StudentList() {
                       <td className="p-3 text-center">₹{paid}</td>
                       <td className="p-3 text-center">
                         {paid >= total && total > 0 ? (
-                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">PAID</span>
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">PAID</span>
                         ) : (
-                          <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full">PENDING</span>
+                          <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">PENDING</span>
                         )}
                       </td>
-                      <td className="p-3 text-center flex gap-2 justify-center">
+                      <td className="p-3 text-center flex flex-wrap gap-2 justify-center">
                         {paid >= total && total > 0 ? (
                           <button
                             onClick={() => { setReceiptStudent(s); setShowReceipt(true); }}
-                            className="bg-purple-600 text-white px-3 py-1 rounded">
+                            className="bg-purple-600 text-white px-3 py-1 rounded text-xs">
                             Receipt
                           </button>
                         ) : (
                           <button
                             onClick={() => handlePayFees(s)}
-                            className="bg-blue-600 text-white px-3 py-1 rounded">
+                            className="bg-blue-600 text-white px-3 py-1 rounded text-xs">
                             Pay
                           </button>
                         )}
+                        {/* 🟢 EDIT BUTTON */}
+                        <button
+                          onClick={() => handleEdit(s)}
+                          className="bg-amber-500 text-white px-3 py-1 rounded text-xs">
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleDelete(s.id)}
-                          className="border border-red-500 text-red-600 px-3 py-1 rounded">
+                          className="border border-red-500 text-red-600 px-3 py-1 rounded text-xs">
                           Delete
                         </button>
                         <button
                           onClick={() => navigator(`/idcard/${s.id}`)}
-                          className="border border-red-500 text-blue-600 px-3 py-1 rounded">
+                          className="border border-blue-500 text-blue-600 px-3 py-1 rounded text-xs">
                           IdCard
                         </button>
-                        
                       </td>
                     </tr>
                   );

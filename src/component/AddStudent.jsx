@@ -37,23 +37,30 @@ export default function AddStudent({ close, editData }) {
   const [savedStudentId, setSavedStudentId] = useState(null);
 
   useEffect(() => {
-    const now = new Date();
-    const session = now.getMonth() + 1 >= 4 ? `${now.getFullYear()}-${String(now.getFullYear() + 1).slice(-2)}` : `${now.getFullYear() - 1}-${String(now.getFullYear()).slice(-2)}`;
-    
-    const initData = async () => {
-        const nextReg = await generateRegNo();
-        setForm(prev => ({ ...prev, session, regNo: nextReg }));
-    };
-    initData();
+    // 🟢 Edit Logic: Agar editData hai toh form bhar do
+    if (editData) {
+      setForm({ ...editData, photo: null });
+      setSubjects(editData.subjects || []);
+      setSavedStudentId(editData.id);
+    } else {
+      // Normal Admission Logic
+      const now = new Date();
+      const session = now.getMonth() + 1 >= 4 ? `${now.getFullYear()}-${String(now.getFullYear() + 1).slice(-2)}` : `${now.getFullYear() - 1}-${String(now.getFullYear()).slice(-2)}`;
+      
+      const initData = async () => {
+          const nextReg = await generateRegNo();
+          setForm(prev => ({ ...prev, session, regNo: nextReg }));
+      };
+      initData();
+    }
 
     const fetchParents = async () => {
       const snap = await getDocs(collection(db, "parents"));
       setParents(snap.docs.map(d => ({ id: d.id, fatherName: d.data().fatherName, phone: d.data().phone })));
     };
     fetchParents();
-  }, []);
+  }, [editData]);
 
-  // 🔥 Unique Registration Number Logic
   const generateRegNo = async () => {
     const q = query(collection(db, "students"), orderBy("regNo", "desc"), limit(1));
     const snap = await getDocs(q);
@@ -62,7 +69,6 @@ export default function AddStudent({ close, editData }) {
     return (parseInt(lastReg) + 1).toString();
   };
 
-  // 🔥 Roll Number Logic (Class wise)
   const generateRoll = async (cls, sess) => {
     const q = query(collection(db, "students"), where("className", "==", cls), where("session", "==", sess));
     const snap = await getDocs(q);
@@ -77,7 +83,8 @@ export default function AddStudent({ close, editData }) {
   const handleChange = async (e) => {
     const { name, value } = e.target;
     if (name === "className") {
-      const roll = await generateRoll(value, form.session);
+      // 🟢 Edit ke waqt roll number automatic change na ho jab tak user na chahe
+      const roll = editData ? form.rollNumber : await generateRoll(value, form.session);
       setForm(prev => ({ ...prev, className: value, rollNumber: roll }));
       const classNum = parseInt(value.replace("Class ", ""));
       if (classNum >= 9 && classNum <= 12) {
@@ -122,29 +129,44 @@ export default function AddStudent({ close, editData }) {
       }
 
       const pId = await getOrCreateParent();
-      const { photo, userId, password, ...safeForm } = form;
+      const { photo, userId, password, id, ...safeForm } = form; // ID ko alag kar diya taaki data mein na jaye
 
-      const studentDocRef = await addDoc(collection(db, "students"), {
-        ...safeForm,
-        admissionFees: Number(form.admissionFees),
-        totalFees: Number(form.totalFees),
-        photoURL: downloadURL,
-        parentId: pId,
-        subjects: subjects,
-        attendance: months.reduce((acc, m) => ({ ...acc, [m]: { present: 0, absent: 0 } }), {}),
-        fees: generateFeesWithPayment(),
-        createdAt: serverTimestamp(),
-        deletedAt: null
-      });
+      if (editData) {
+        // 🟢 UPDATE LOGIC
+        await updateDoc(doc(db, "students", editData.id), {
+          ...safeForm,
+          admissionFees: Number(form.admissionFees),
+          totalFees: Number(form.totalFees),
+          photoURL: downloadURL,
+          parentId: pId,
+          subjects: subjects,
+        });
+        toast.success("Updated Successfully!");
+        close();
+      } else {
+        // 🟢 INSERT LOGIC
+        const studentDocRef = await addDoc(collection(db, "students"), {
+          ...safeForm,
+          admissionFees: Number(form.admissionFees),
+          totalFees: Number(form.totalFees),
+          photoURL: downloadURL,
+          parentId: pId,
+          subjects: subjects,
+          attendance: months.reduce((acc, m) => ({ ...acc, [m]: { present: 0, absent: 0 } }), {}),
+          fees: generateFeesWithPayment(),
+          createdAt: serverTimestamp(),
+          deletedAt: null
+        });
 
-      await updateDoc(doc(db, "parents", pId), { students: arrayUnion(studentDocRef.id) });
-      await updateTotalStudents();
-      setSavedStudentId(studentDocRef.id);
-      
-      setTimeout(() => {
-        setFess(true);
-        setLoading(false);
-      }, 800);
+        await updateDoc(doc(db, "parents", pId), { students: arrayUnion(studentDocRef.id) });
+        await updateTotalStudents();
+        setSavedStudentId(studentDocRef.id);
+        
+        setTimeout(() => {
+          setFess(true);
+          setLoading(false);
+        }, 800);
+      }
     } catch (err) { alert("Error!"); setLoading(false); }
   };
 
@@ -153,7 +175,7 @@ export default function AddStudent({ close, editData }) {
       {!fess ? (
         <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
           <div className="p-4 border-b flex justify-between bg-blue-50">
-            <h2 className="text-xl font-bold text-blue-700">Admission Entry (REG: {form.regNo})</h2>
+            <h2 className="text-xl font-bold text-blue-700">{editData ? "Edit Student Details" : `Admission Entry (REG: ${form.regNo})`}</h2>
             <button onClick={close} className="text-3xl hover:text-red-500">&times;</button>
           </div>
 
@@ -227,15 +249,21 @@ export default function AddStudent({ close, editData }) {
               <div className="md:col-span-2 font-bold text-gray-700 border-l-4 border-yellow-500 pl-2 uppercase text-xs">Fees & Address</div>
               <input name="admissionFees" value={form.admissionFees} onChange={handleChange} placeholder="Admission Fee" className="border p-2.5 rounded" required />
               <input name="totalFees" value={form.totalFees} onChange={handleChange} placeholder="Monthly Fee" className="border p-2.5 rounded" required />
-              <input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="Immediate Payment (₹)" className="md:col-span-2 border p-2.5 rounded bg-green-50 font-bold" />
+              
+              {/* Edit mode mein payment input chupa sakte hain kyunki fees update table se hogi */}
+              {!editData && (
+                <input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="Immediate Payment (₹)" className="md:col-span-2 border p-2.5 rounded bg-green-50 font-bold" />
+              )}
+              
               <textarea name="address" value={form.address} onChange={handleChange} placeholder="Full Address" className="md:col-span-2 border p-2.5 rounded h-16" required />
               <div className="md:col-span-2 border-2 border-dashed p-3 text-center rounded bg-gray-50">
                 <input type="file" onChange={(e) => setForm(p => ({ ...p, photo: e.target.files[0] }))} className="text-xs" />
+                {form.photoURL && <p className="text-[10px] text-green-600 mt-1">Photo already exists</p>}
               </div>
             </section>
             
             <button disabled={loading} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-xl">
-              {loading ? "Registering..." : "SAVE & PRINT FORM"}
+              {loading ? "Processing..." : (editData ? "UPDATE DETAILS" : "SAVE & PRINT FORM")}
             </button>
           </form>
         </div>
